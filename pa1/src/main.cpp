@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -6,6 +7,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+    auto start = chrono::high_resolution_clock::now();
     fstream input, output;
 
     if (argc == 3) {
@@ -27,10 +29,31 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    auto end = chrono::high_resolution_clock::now();
+    cout << "Initialization: "
+         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+         << " ms" << endl;
+
     Partitioner* partitioner = new Partitioner(input);
+    end = chrono::high_resolution_clock::now();
+    cout << "Parsing input: "
+         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+         << " ms" << endl;
     partitioner->partition();
+    end = chrono::high_resolution_clock::now();
+    cout << "Partitioning: "
+         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+         << " ms" << endl;
     partitioner->printSummary();
+    end = chrono::high_resolution_clock::now();
+    cout << "Printing summary: "
+         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+         << " ms" << endl;
     partitioner->writeResult(output);
+    end = chrono::high_resolution_clock::now();
+    cout << "Writing result: "
+         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+         << " ms" << endl;
 
     return 0;
 }

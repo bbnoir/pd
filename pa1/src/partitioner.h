@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include "cell.h"
 #include "net.h"
 using namespace std;
@@ -39,6 +40,9 @@ public:
     void reportNet() const;
     void reportCell() const;
     void writeResult(fstream& outFile);
+    
+    void insertBList(int part, int gain, Node* node);
+    void removeBList(int part, int gain, Node* node);
 
 private:
     int                 _cutSize;       // cut size
@@ -47,12 +51,14 @@ private:
     int                 _cellNum;       // number of cells
     int                 _maxPinNum;     // Pmax for building bucket list
     double              _bFactor;       // the balance factor to be met
-    Node*               _maxGainCell;   // pointer to max gain cell
+    // int                 _maxGainPart;   // partition of max gain cell
+    int                 _maxGain[2];    // max gain
+    // Node*               _maxGainNode[2];   // pointer to max gain cell
     vector<Net*>        _netArray;      // net array of the circuit
     vector<Cell*>       _cellArray;     // cell array of the circuit
     map<int, Node*>     _bList[2];      // bucket list of partition A(0) and B(1)
-    map<string, int>    _netName2Id;    // mapping from net name to id
-    map<string, int>    _cellName2Id;   // mapping from cell name to id
+    unordered_map<string, int>    _netName2Id;    // mapping from net name to id
+    unordered_map<string, int>    _cellName2Id;   // mapping from cell name to id
 
     int                 _accGain;       // accumulative gain
     int                 _maxAccGain;    // maximum accumulative gain
