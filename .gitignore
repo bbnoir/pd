@@ -34,3 +34,6 @@
 # Custom
 bin
 tests
+log
+out
+.vscode
