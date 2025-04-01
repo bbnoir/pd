@@ -4,6 +4,8 @@
 #include <vector>
 using namespace std;
 
+class Net;
+
 class Node
 {
     friend class Cell;
@@ -47,8 +49,8 @@ public:
     bool getLock() const    { return _lock; }
     Node* getNode() const   { return _node; }
     string getName() const  { return _name; }
-    int getFirstNet() const { return _netList[0]; }
-    vector<int> getNetList() const  { return _netList; }
+    // int getFirstNet() const { return _netList[0]; }
+    const vector<Net*>& getNetList() const  { return _netList; }
 
     // Set functions
     void setNode(Node* node)        { _node = node; }
@@ -64,7 +66,7 @@ public:
     void decGain()      { --_gain; }
     void incPinNum()    { ++_pinNum; }
     void decPinNum()    { --_pinNum; }
-    void addNet(const int netId) { _netList.push_back(netId); }
+    void addNet(Net* net) { _netList.push_back(net); }
 
 private:
     int             _gain;      // gain of the cell
@@ -73,7 +75,7 @@ private:
     bool            _lock;      // whether the cell is locked
     Node*           _node;      // node used to link the cells together
     string          _name;      // name of the cell
-    vector<int>     _netList;   // list of nets the cell is connected to
+    vector<Net*>     _netList;   // list of nets the cell is connected to
 };
 
 #endif  // CELL_H

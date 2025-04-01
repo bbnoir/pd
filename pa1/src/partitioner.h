@@ -37,8 +37,6 @@ public:
 
     // member functions about reporting
     void printSummary() const;
-    void reportNet() const;
-    void reportCell() const;
     void writeResult(fstream& outFile);
     
     void insertBList(int part, int gain, Node* node);
@@ -57,8 +55,6 @@ private:
     vector<Net*>        _netArray;      // net array of the circuit
     vector<Cell*>       _cellArray;     // cell array of the circuit
     vector<Node*>     _bList[2];      // bucket list of partition A(0) and B(1)
-    unordered_map<string, int>    _netName2Id;    // mapping from net name to id
-    unordered_map<string, int>    _cellName2Id;   // mapping from cell name to id
 
     int                 _accGain;       // accumulative gain
     int                 _maxAccGain;    // maximum accumulative gain

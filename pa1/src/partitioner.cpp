@@ -19,14 +19,15 @@ void Partitioner::parseInput(fstream& inFile)
     inFile >> str;
     _bFactor = stod(str);
 
+    unordered_map<string, int> cellName2Id;
+
     // Set up whole circuit
     while (inFile >> str) {
         if (str == "NET") {
             string netName, cellName, tmpCellName = "";
             inFile >> netName;
-            int netId = _netNum;
-            _netArray.push_back(new Net(netName));
-            _netName2Id[netName] = netId;
+            Net* net = new Net(netName);
+            _netArray.push_back(net);
             while (inFile >> cellName) {
                 if (cellName == ";") {
                     tmpCellName = "";
@@ -34,24 +35,26 @@ void Partitioner::parseInput(fstream& inFile)
                 }
                 else {
                     // a newly seen cell
-                    if (_cellName2Id.count(cellName) == 0) {
+                    if (cellName2Id.count(cellName) == 0) {
                         int cellId = _cellNum;
-                        _cellArray.push_back(new Cell(cellName, 0, cellId));
-                        _cellName2Id[cellName] = cellId;
-                        _cellArray[cellId]->addNet(netId);
-                        _cellArray[cellId]->incPinNum();
-                        _netArray[netId]->addCell(cellId);
+                        Cell* cell = new Cell(cellName, 0, cellId);
+                        _cellArray.push_back(cell);
+                        cellName2Id[cellName] = cellId;
+                        cell->addNet(net);
+                        cell->incPinNum();
+                        net->addCell(cell);
                         ++_cellNum;
                         tmpCellName = cellName;
                     }
                     // an existed cell
                     else {
                         if (cellName != tmpCellName) {
-                            assert(_cellName2Id.count(cellName) == 1);
-                            int cellId = _cellName2Id[cellName];
-                            _cellArray[cellId]->addNet(netId);
-                            _cellArray[cellId]->incPinNum();
-                            _netArray[netId]->addCell(cellId);
+                            assert(cellName2Id.count(cellName) == 1);
+                            int cellId = cellName2Id[cellName];
+                            Cell* cell = _cellArray[cellId];
+                            cell->addNet(net);
+                            cell->incPinNum();
+                            net->addCell(cell);
                             tmpCellName = cellName;
                         }
                     }
@@ -86,8 +89,8 @@ void Partitioner::partition()
     _partSize[0] = _cellArray.size() - _partSize[1];
     int initCutSize = 0;
     for (auto net : _netArray) {
-        for (int cellId : net->getCellList()) {
-            net->incPartCount(_cellArray[cellId]->getPart());
+        for (auto cell : net->getCellList()) {
+            net->incPartCount(cell->getPart());
         }
         if (net->getPartCount(0) > 0 && net->getPartCount(1) > 0) {
             ++initCutSize;
@@ -108,11 +111,8 @@ void Partitioner::partition()
         _maxGain[0] = _maxGain[1] = -_maxPinNum-1;
         for (auto cell : _cellArray) {
             const int part = cell->getPart();
-            const vector<int> netList = cell->getNetList();
-            Net* net = nullptr;
             int gain = 0;
-            for (int netId : netList) {
-                net = _netArray[netId];
+            for (auto net : cell->getNetList()) {
                 if (net->getPartCount(part) == 1) {
                     ++gain;
                 }
@@ -165,15 +165,11 @@ void Partitioner::partition()
             --_partSize[F];
             ++_partSize[T];
             removeBList(F, curGain, maxNode);
-            const vector<int> netList = cell->getNetList();
-            for (int netId : netList) {
-                Net* net = _netArray[netId];
+            for (auto net : cell->getNetList()) {
                 // check critical nets before moving
                 const int partCountT = net->getPartCount(T);
                 if (partCountT == 0) {
-                    const vector<int> cellList = net->getCellList();
-                    for (int cellId : cellList) {
-                        Cell* updateCell = _cellArray[cellId];
+                    for (auto updateCell : net->getCellList()) {
                         if (!updateCell->getLock()) {
                             removeBList(F, updateCell->getGain(), updateCell->getNode());
                             updateCell->incGain();
@@ -182,9 +178,7 @@ void Partitioner::partition()
                     }
                 }
                 else if (partCountT == 1) {
-                    const vector<int> cellList = net->getCellList();
-                    for (int cellId : cellList) {
-                        Cell* updateCell = _cellArray[cellId];
+                    for (auto updateCell : net->getCellList()) {
                         if (updateCell->getPart() == T && updateCell != cell) {
                             if (!updateCell->getLock()) {
                                 removeBList(T, updateCell->getGain(), updateCell->getNode());
@@ -199,9 +193,7 @@ void Partitioner::partition()
                 net->incPartCount(T);
                 const int partCountF = net->getPartCount(F);
                 if (partCountF == 0) {
-                    const vector<int> cellList = net->getCellList();
-                    for (int cellId : cellList) {
-                        Cell* updateCell = _cellArray[cellId];
+                    for (auto updateCell : net->getCellList()) {
                         if (!updateCell->getLock()) {
                             removeBList(T, updateCell->getGain(), updateCell->getNode());
                             updateCell->decGain();
@@ -210,9 +202,7 @@ void Partitioner::partition()
                     }
                 }
                 else if (partCountF == 1) {
-                    const vector<int> cellList = net->getCellList();
-                    for (int cellId : cellList) {
-                        Cell* updateCell = _cellArray[cellId];
+                    for (auto updateCell : net->getCellList()) {
                         if (updateCell->getPart() == F) {
                             if (!updateCell->getLock()) {
                                 removeBList(F, updateCell->getGain(), updateCell->getNode());
@@ -233,9 +223,7 @@ void Partitioner::partition()
             cell->move();
             _partSize[F]--;
             _partSize[T]++;
-            const vector<int> netList = cell->getNetList();
-            for (int netId : netList) {
-                Net* net = _netArray[netId];
+            for (auto net : cell->getNetList()) {
                 net->decPartCount(F);
                 net->incPartCount(T);
             }
@@ -288,34 +276,6 @@ void Partitioner::printSummary() const
     return;
 }
 
-void Partitioner::reportNet() const
-{
-    cout << "Number of nets: " << _netNum << endl;
-    for (size_t i = 0, end_i = _netArray.size(); i < end_i; ++i) {
-        cout << setw(8) << _netArray[i]->getName() << ": ";
-        vector<int> cellList = _netArray[i]->getCellList();
-        for (size_t j = 0, end_j = cellList.size(); j < end_j; ++j) {
-            cout << setw(8) << _cellArray[cellList[j]]->getName() << " ";
-        }
-        cout << endl;
-    }
-    return;
-}
-
-void Partitioner::reportCell() const
-{
-    cout << "Number of cells: " << _cellNum << endl;
-    for (size_t i = 0, end_i = _cellArray.size(); i < end_i; ++i) {
-        cout << setw(8) << _cellArray[i]->getName() << ": ";
-        vector<int> netList = _cellArray[i]->getNetList();
-        for (size_t j = 0, end_j = netList.size(); j < end_j; ++j) {
-            cout << setw(8) << _netArray[netList[j]]->getName() << " ";
-        }
-        cout << endl;
-    }
-    return;
-}
-
 void Partitioner::writeResult(fstream& outFile)
 {
     stringstream buff;
@@ -324,18 +284,18 @@ void Partitioner::writeResult(fstream& outFile)
     buff.str("");
     buff << _partSize[0];
     outFile << "G1 " << buff.str() << '\n';
-    for (size_t i = 0, end = _cellArray.size(); i < end; ++i) {
-        if (_cellArray[i]->getPart() == 0) {
-            outFile << _cellArray[i]->getName() << " ";
+    for (auto cell : _cellArray) {
+        if (cell->getPart() == 0) {
+            outFile << cell->getName() << " ";
         }
     }
     outFile << ";\n";
     buff.str("");
     buff << _partSize[1];
     outFile << "G2 " << buff.str() << '\n';
-    for (size_t i = 0, end = _cellArray.size(); i < end; ++i) {
-        if (_cellArray[i]->getPart() == 1) {
-            outFile << _cellArray[i]->getName() << " ";
+    for (auto cell : _cellArray) {
+        if (cell->getPart() == 1) {
+            outFile << cell->getName() << " ";
         }
     }
     outFile << ";\n";
@@ -344,11 +304,12 @@ void Partitioner::writeResult(fstream& outFile)
 
 void Partitioner::clear()
 {
-    for (size_t i = 0, end = _cellArray.size(); i < end; ++i) {
-        delete _cellArray[i];
+    for (auto& cell : _cellArray) {
+        delete cell->getNode();
+        delete cell;
     }
-    for (size_t i = 0, end = _netArray.size(); i < end; ++i) {
-        delete _netArray[i];
+    for (auto& net : _netArray) {
+        delete net;
     }
     for (auto& node : _bList[0]) {
         delete node;
