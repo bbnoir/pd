@@ -56,7 +56,7 @@ private:
     // Node*               _maxGainNode[2];   // pointer to max gain cell
     vector<Net*>        _netArray;      // net array of the circuit
     vector<Cell*>       _cellArray;     // cell array of the circuit
-    map<int, Node*>     _bList[2];      // bucket list of partition A(0) and B(1)
+    vector<Node*>     _bList[2];      // bucket list of partition A(0) and B(1)
     unordered_map<string, int>    _netName2Id;    // mapping from net name to id
     unordered_map<string, int>    _cellName2Id;   // mapping from cell name to id
 
@@ -70,6 +70,7 @@ private:
 
     // Clean up partitioner
     void clear();
+    inline int gain2blistId(int gain) const { return gain + _maxPinNum; }
 };
 
 #endif  // PARTITIONER_H

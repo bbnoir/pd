@@ -72,9 +72,11 @@ void Partitioner::partition()
     for (auto cell : _cellArray) {
         _maxPinNum = max(_maxPinNum, cell->getPinNum());
     }
+    _bList[0].resize(2*_maxPinNum+1, nullptr);
+    _bList[1].resize(2*_maxPinNum+1, nullptr);
     for (int i = -_maxPinNum; i <= _maxPinNum; ++i) {
-        _bList[0][i] = new Node(-1);
-        _bList[1][i] = new Node(-1);
+        _bList[0][gain2blistId(i)] = new Node(-1);
+        _bList[1][gain2blistId(i)] = new Node(-1);
     }
     // init partition
     for (size_t i = _cellNum / 2, end = _cellNum; i < end; ++i) {
@@ -99,8 +101,8 @@ void Partitioner::partition()
     {
         // reset bucket lists
         for (int i = -_maxPinNum; i <= _maxPinNum; ++i) {
-            _bList[0][i]->setNext(nullptr);
-            _bList[1][i]->setNext(nullptr);
+            _bList[0][gain2blistId(i)]->setNext(nullptr);
+            _bList[1][gain2blistId(i)]->setNext(nullptr);
         }
         // reset cell gains
         _maxGain[0] = _maxGain[1] = -_maxPinNum-1;
@@ -142,7 +144,7 @@ void Partitioner::partition()
             else {
                 chosenPart = 1;
             }
-            Node* const maxNode = _bList[chosenPart][_maxGain[chosenPart]]->getNext();
+            Node* const maxNode = _bList[chosenPart][gain2blistId(_maxGain[chosenPart])]->getNext();
             if (maxNode == nullptr) {
                 break;
             }
@@ -246,7 +248,7 @@ void Partitioner::partition()
 
 void Partitioner::insertBList(int part, int gain, Node* node)
 {
-    Node* head = _bList[part][gain];
+    Node* head = _bList[part][gain2blistId(gain)];
     Node* next = head->getNext();
     node->setNext(next);
     node->setPrev(head);
@@ -265,7 +267,7 @@ void Partitioner::removeBList(int part, int gain, Node* node)
     if (next != nullptr) {
         next->setPrev(prev);
     }
-    while (_maxGain[part] > -_maxPinNum && _bList[part][_maxGain[part]]->getNext() == nullptr) {
+    while (_maxGain[part] > -_maxPinNum && _bList[part][gain2blistId(_maxGain[part])]->getNext() == nullptr) {
         --_maxGain[part];
     }
     node->setPrev(nullptr);
@@ -347,6 +349,12 @@ void Partitioner::clear()
     }
     for (size_t i = 0, end = _netArray.size(); i < end; ++i) {
         delete _netArray[i];
+    }
+    for (auto& node : _bList[0]) {
+        delete node;
+    }
+    for (auto& node : _bList[1]) {
+        delete node;
     }
     return;
 }
