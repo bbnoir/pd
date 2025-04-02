@@ -3,7 +3,6 @@
 
 #include <fstream>
 #include <vector>
-#include <map>
 #include <unordered_map>
 #include "cell.h"
 #include "net.h"
@@ -54,7 +53,7 @@ private:
     // Node*               _maxGainNode[2];   // pointer to max gain cell
     vector<Net*>        _netArray;      // net array of the circuit
     vector<Cell*>       _cellArray;     // cell array of the circuit
-    vector<Node*>     _bList[2];      // bucket list of partition A(0) and B(1)
+    vector<Node*>       _bList[2];      // bucket list of partition A(0) and B(1)
 
     int                 _accGain;       // accumulative gain
     int                 _maxAccGain;    // maximum accumulative gain
@@ -62,7 +61,7 @@ private:
     int                 _iterNum;       // number of iterations
     int                 _bestMoveNum;   // store best number of movements
     int                 _unlockNum[2];  // number of unlocked cells
-    vector<int>         _moveStack;     // history of cell movement
+    vector<Cell*>       _moveStack;     // history of cell movement
 
     // Clean up partitioner
     void clear();

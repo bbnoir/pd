@@ -5,7 +5,6 @@
 #include <cassert>
 #include <vector>
 #include <cmath>
-#include <map>
 #include "cell.h"
 #include "net.h"
 #include "partitioner.h"
@@ -75,11 +74,12 @@ void Partitioner::partition()
     for (auto cell : _cellArray) {
         _maxPinNum = max(_maxPinNum, cell->getPinNum());
     }
-    _bList[0].resize(2*_maxPinNum+1, nullptr);
-    _bList[1].resize(2*_maxPinNum+1, nullptr);
-    for (int i = -_maxPinNum; i <= _maxPinNum; ++i) {
-        _bList[0][gain2blistId(i)] = new Node(-1);
-        _bList[1][gain2blistId(i)] = new Node(-1);
+    const int bListSize = 2 * _maxPinNum + 1;
+    _bList[0].resize(bListSize, nullptr);
+    _bList[1].resize(bListSize, nullptr);
+    for (int i = 0, end_i = bListSize; i < end_i; ++i) {
+        _bList[0][i] = new Node(nullptr);
+        _bList[1][i] = new Node(nullptr);
     }
     // init partition
     for (size_t i = _cellNum / 2, end = _cellNum; i < end; ++i) {
@@ -103,9 +103,9 @@ void Partitioner::partition()
     do
     {
         // reset bucket lists
-        for (int i = -_maxPinNum; i <= _maxPinNum; ++i) {
-            _bList[0][gain2blistId(i)]->setNext(nullptr);
-            _bList[1][gain2blistId(i)]->setNext(nullptr);
+        for (int i = 0, end_i = bListSize; i < end_i; ++i) {
+            _bList[0][i]->setNext(nullptr);
+            _bList[1][i]->setNext(nullptr);
         }
         // reset cell gains
         _maxGain[0] = _maxGain[1] = -_maxPinNum-1;
@@ -129,7 +129,7 @@ void Partitioner::partition()
         _maxAccGain = 0;
         _bestMoveNum = 0;
         _moveStack.clear();
-        _moveStack.resize(_cellNum, 0);
+        _moveStack.resize(_cellNum, nullptr);
         for (_moveNum = 0; _moveNum < _cellNum; ++_moveNum) {
             int chosenPart = 0;
             if (_partSize[0] <= minPartSize) {
@@ -148,9 +148,8 @@ void Partitioner::partition()
             if (maxNode == nullptr) {
                 break;
             }
-            const int cellId = maxNode->getId();
-            _moveStack[_moveNum] = cellId;
-            Cell* cell = _cellArray[cellId];
+            Cell* const cell = maxNode->getCell();
+            _moveStack[_moveNum] = cell;
             const int curGain = cell->getGain();
             _accGain += curGain;
             if (_accGain > _maxAccGain) {
@@ -217,7 +216,7 @@ void Partitioner::partition()
         }
         // backtrack
         for (int i = _moveNum - 1; i > _bestMoveNum; --i) {
-            Cell* const cell = _cellArray[_moveStack[i]];
+            Cell* const cell = _moveStack[i];
             const int F = cell->getPart();
             const int T = 1-F;
             cell->move();

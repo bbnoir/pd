@@ -5,6 +5,7 @@
 using namespace std;
 
 class Net;
+class Cell;
 
 class Node
 {
@@ -12,22 +13,20 @@ class Node
 
 public:
     // Constructor and destructor
-    Node(const int& id) :
-        _id(id), _prev(NULL), _next(NULL) { }
+    Node(Cell* cell) : _cell(cell), _prev(nullptr), _next(nullptr) { }
     ~Node() { }
 
     // Basic access methods
-    int getId() const       { return _id; }
+    Cell* getCell() const   { return _cell; }
     Node* getPrev() const   { return _prev; }
     Node* getNext() const   { return _next; }
 
     // Set functions
-    void setId(const int& id) { _id = id; }
     void setPrev(Node* prev)  { _prev = prev; }
     void setNext(Node* next)  { _next = next; }
 
 private:
-    int         _id;    // id of the node (indicating the cell)
+    Cell*       _cell;  // pointer to the cell
     Node*       _prev;  // pointer to the previous node
     Node*       _next;  // pointer to the next node
 };
@@ -38,7 +37,7 @@ public:
     // Constructor and destructor
     Cell(string& name, bool part, int id) :
         _gain(0), _pinNum(0), _part(part), _lock(false), _name(name) {
-        _node = new Node(id);
+        _node = new Node(this);
     }
     ~Cell() { }
 
