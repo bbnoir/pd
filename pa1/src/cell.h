@@ -36,12 +36,18 @@ class Cell
 public:
     // Constructor and destructor
     Cell(string& name, bool part, int id) :
-        _gain(0), _pinNum(0), _part(part), _lock(false), _name(name) {
+        _id(id), _gain(0), _pinNum(0), _part(part), _lock(false), _name(name) {
         _node = new Node(this);
     }
     ~Cell() { }
+    Cell(const Cell& cell) :
+        _id(cell._id), _gain(cell._gain), _pinNum(cell._pinNum),
+        _part(cell._part), _lock(cell._lock), _name(cell._name) {
+        _node = new Node(this);
+    }
 
     // Basic access methods
+    int getId() const      { return _id; }
     int getGain() const     { return _gain; }
     int getPinNum() const   { return _pinNum; }
     bool getPart() const    { return _part; }
@@ -68,6 +74,7 @@ public:
     void addNet(Net* net) { _netList.push_back(net); }
 
 private:
+    int             _id;        // id of the cell
     int             _gain;      // gain of the cell
     int             _pinNum;    // number of pins the cell are connected to
     bool            _part;      // partition the cell belongs to (0-A, 1-B)

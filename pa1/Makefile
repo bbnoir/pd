@@ -1,5 +1,5 @@
 CC=g++
-LDFLAGS=-std=c++11 -O3 -lm -g
+LDFLAGS=-std=c++11 -O3 -lm -g -fopenmp
 SOURCES=src/partitioner.cpp src/main.cpp
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=fm
@@ -33,10 +33,8 @@ dirs: $(CUSTOM_DIRS)
 clean_custom:
 	rm -rf $(CUSTOM_DIRS)
 
-SEED = 42
-
 define TEST
-	$(eval RUNTIME := $(shell { time -p ./bin/$(EXECUTABLE) $(TEST_DIR)/$1.dat $(OUTPUT_DIR)/$1.dat $(SEED) > $(LOG_DIR)/$1.log; } 2>&1 | grep real | awk '{print $$2}'))
+	$(eval RUNTIME := $(shell { time -p ./bin/$(EXECUTABLE) $(TEST_DIR)/$1.dat $(OUTPUT_DIR)/$1.dat > $(LOG_DIR)/$1.log; } 2>&1 | grep real | awk '{print $$2}'))
 	@cat $(LOG_DIR)/$1.log
 	@echo "Runtime: $(RUNTIME) seconds"
 	./evaluator/evaluator.sh $(TEST_DIR)/$1.dat $(OUTPUT_DIR)/$1.dat $(RUNTIME) | tee $(LOG_DIR)/$1_eval.log

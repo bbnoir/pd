@@ -23,6 +23,36 @@ public:
         clear();
     }
 
+    // copy constructor
+    Partitioner(const Partitioner& part) :
+        _cutSize(0), _netNum(part._netNum), _cellNum(part._cellNum),
+        _maxPinNum(part._maxPinNum), _bFactor(part._bFactor),
+        _accGain(part._accGain), _maxAccGain(part._maxAccGain),
+        _iterNum(part._iterNum), _moveNum(0), _bestMoveNum(0) {
+            // copy net array
+            for (auto net : part._netArray) {
+                Net* newNet = new Net(*net);
+                _netArray.push_back(newNet);
+            }
+            // copy cell array
+            for (auto cell : part._cellArray) {
+                Cell* newCell = new Cell(*cell);
+                _cellArray.push_back(newCell);
+                // set up the net list of the new cell
+                for (auto net : cell->getNetList()) {
+                    newCell->addNet(_netArray[net->getId()]);
+                }
+            }
+            // set up the cell list of the new net
+            for (int i = 0; i < _netNum; ++i) {
+                Net* net = _netArray[i];
+                for (auto cell : part._netArray[i]->getCellList()) {
+                    net->addCell(_cellArray[cell->getId()]);
+                }
+            }
+            _partSize[0] = _partSize[1] = 0;
+    }
+
     // basic access methods
     int getCutSize() const          { return _cutSize; }
     int getNetNum() const           { return _netNum; }

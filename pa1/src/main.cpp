@@ -2,13 +2,15 @@
 #include <fstream>
 #include <vector>
 #include "partitioner.h"
+#include <omp.h>
+
 using namespace std;
 
 int main(int argc, char **argv)
 {
     fstream input, output;
 
-    if (argc >= 3) {
+    if (argc == 3) {
         input.open(argv[1], ios::in);
         output.open(argv[2], ios::out);
         if (!input) {
@@ -27,21 +29,34 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    if (argc == 4) {
-        const int seed = atoi(argv[3]);
-        Partitioner *partitioner = new Partitioner(input);
-        partitioner->initPartition(seed);
-        partitioner->partition();
-        const int cutSize = partitioner->getCutSize();
-        cout << cutSize << '\n';
-        partitioner->writeResult(output);
-        return 0;
+    vector<int> seedList = {79751, 86272, 15873, 8277, 72972, 1750};
+    Partitioner *partitioner = new Partitioner(input);
+    input.close();
+    vector<Partitioner*> partitioners(6, nullptr);
+
+    #pragma omp parallel num_threads(6)
+    {
+        int i = omp_get_thread_num();
+        Partitioner *parti = new Partitioner(*partitioner);
+        partitioners[i] = parti;
+        parti->initPartition(seedList[i]);
+        parti->partition();
     }
 
-    Partitioner *partitioner = new Partitioner(input);
-    partitioner->initPartition();
-    partitioner->partition();
-    // partitioner->printSummary();
-    partitioner->writeResult(output);
+    int minCutSize = partitioners[0]->getCutSize();
+    int minIndex = 0;
+    for (int i = 1; i < 6; ++i) {
+        if (partitioners[i]->getCutSize() < minCutSize) {
+            minCutSize = partitioners[i]->getCutSize();
+            minIndex = i;
+        }
+    }
+    partitioners[minIndex]->writeResult(output);
+
+    delete partitioner;
+    for (Partitioner* parti : partitioners) {
+        delete parti;
+    }
+
     return 0;
 }

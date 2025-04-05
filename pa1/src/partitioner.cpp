@@ -26,7 +26,7 @@ void Partitioner::parseInput(fstream& inFile)
         if (str == "NET") {
             string netName, cellName, tmpCellName = "";
             inFile >> netName;
-            Net* net = new Net(netName);
+            Net* net = new Net(netName, _netNum);
             _netArray.push_back(net);
             while (inFile >> cellName) {
                 if (cellName == ";") {
