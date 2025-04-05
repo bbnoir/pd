@@ -78,9 +78,10 @@ void Partitioner::initPartition()
 
 void Partitioner::initPartition(const int seed)
 {
-    srand(seed);
+    mt19937 gen(seed);
+    uniform_int_distribution<> dis(0, 1);
     for (size_t i = 0, end = _cellNum; i < end; ++i) {
-        const int part = rand() % 2;
+        const int part = dis(gen);
         _cellArray[i]->setPart(part);
         ++_partSize[part];
     }
