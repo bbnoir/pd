@@ -5,6 +5,7 @@
 #include <cassert>
 #include <vector>
 #include <cmath>
+#include <random>
 #include "cell.h"
 #include "net.h"
 #include "partitioner.h"
@@ -65,6 +66,26 @@ void Partitioner::parseInput(fstream& inFile)
     return;
 }
 
+void Partitioner::initPartition()
+{
+    // set first half of cells to part 0 and the second half to part 1
+    for (size_t i = _cellNum / 2, end = _cellNum; i < end; ++i) {
+        _cellArray[i]->setPart(1);
+        _partSize[1]++;
+    }
+    _partSize[0] = _cellArray.size() - _partSize[1];
+}
+
+void Partitioner::initPartition(const int seed)
+{
+    srand(seed);
+    for (size_t i = 0, end = _cellNum; i < end; ++i) {
+        const int part = rand() % 2;
+        _cellArray[i]->setPart(part);
+        ++_partSize[part];
+    }
+}
+
 void Partitioner::partition()
 {
     // set up balance factor
@@ -81,12 +102,6 @@ void Partitioner::partition()
         _bList[0][i] = new Node(nullptr);
         _bList[1][i] = new Node(nullptr);
     }
-    // init partition
-    for (size_t i = _cellNum / 2, end = _cellNum; i < end; ++i) {
-        _cellArray[i]->setPart(1);
-        _partSize[1]++;
-    }
-    _partSize[0] = _cellArray.size() - _partSize[1];
     int initCutSize = 0;
     for (auto net : _netArray) {
         for (auto cell : net->getCellList()) {

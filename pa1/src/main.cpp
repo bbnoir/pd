@@ -5,7 +5,15 @@
 #include "partitioner.h"
 using namespace std;
 
-int main(int argc, char** argv)
+static void printRuntime(const string &msg, const chrono::high_resolution_clock::time_point &start)
+{
+    auto end = chrono::high_resolution_clock::now();
+    cout << msg << ": "
+         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+         << " ms" << endl;
+}
+
+int main(int argc, char **argv)
 {
     auto start = chrono::high_resolution_clock::now();
     fstream input, output;
@@ -29,31 +37,20 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    auto end = chrono::high_resolution_clock::now();
-    cout << "Initialization: "
-         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
-         << " ms" << endl;
+    Partitioner *partitioner = new Partitioner(input);
+    printRuntime("Parsing input", start);
 
-    Partitioner* partitioner = new Partitioner(input);
-    end = chrono::high_resolution_clock::now();
-    cout << "Parsing input: "
-         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
-         << " ms" << endl;
+    partitioner->initPartition();
+    printRuntime("Initializing partition", start);
+
     partitioner->partition();
-    end = chrono::high_resolution_clock::now();
-    cout << "Partitioning: "
-         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
-         << " ms" << endl;
+    printRuntime("Partitioning", start);
+
     partitioner->printSummary();
-    end = chrono::high_resolution_clock::now();
-    cout << "Printing summary: "
-         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
-         << " ms" << endl;
+    printRuntime("Printing summary", start);
+
     partitioner->writeResult(output);
-    end = chrono::high_resolution_clock::now();
-    cout << "Writing result: "
-         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
-         << " ms" << endl;
+    printRuntime("Writing result", start);
 
     return 0;
 }

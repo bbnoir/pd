@@ -32,6 +32,8 @@ public:
 
     // modify method
     void parseInput(fstream& inFile);
+    void initPartition();
+    void initPartition(const int seed);
     void partition();
 
     // member functions about reporting
