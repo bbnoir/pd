@@ -16,6 +16,9 @@ bin/$(EXECUTABLE): $(OBJECTS)
 clean:
 	rm -rf *.o bin/$(EXECUTABLE)
 
+re: clean all
+.PHONY: re
+
 TEST_DIR = input_pa1
 LOG_DIR = log
 OUTPUT_DIR = out
@@ -30,8 +33,10 @@ dirs: $(CUSTOM_DIRS)
 clean_custom:
 	rm -rf $(CUSTOM_DIRS)
 
+SEED = 42
+
 define TEST
-	$(eval RUNTIME := $(shell { time -p ./bin/$(EXECUTABLE) $(TEST_DIR)/$1.dat $(OUTPUT_DIR)/$1.dat > $(LOG_DIR)/$1.log; } 2>&1 | grep real | awk '{print $$2}'))
+	$(eval RUNTIME := $(shell { time -p ./bin/$(EXECUTABLE) $(TEST_DIR)/$1.dat $(OUTPUT_DIR)/$1.dat $(SEED) > $(LOG_DIR)/$1.log; } 2>&1 | grep real | awk '{print $$2}'))
 	@cat $(LOG_DIR)/$1.log
 	@echo "Runtime: $(RUNTIME) seconds"
 	./evaluator/evaluator.sh $(TEST_DIR)/$1.dat $(OUTPUT_DIR)/$1.dat $(RUNTIME) | tee $(LOG_DIR)/$1_eval.log
@@ -61,5 +66,5 @@ t6: all dirs
 	$(call TEST,input_5)
 .PHONY: t6
 
-tall: t1 t2 t3 t4 t5 t6
+tall: clean_custom re t1 t2 t3 t4 t5 t6
 .PHONY: tall

@@ -111,7 +111,6 @@ void Partitioner::partition()
             ++initCutSize;
         }
     }
-    cout << "Initial cutsize = " << initCutSize << ", partSize[0] = " << _partSize[0] << ", partSize[1] = " << _partSize[1] << "\n";
     _cutSize = initCutSize;
     // iterate FM
     _iterNum = 0;
@@ -243,7 +242,6 @@ void Partitioner::partition()
             }
         }
         _cutSize -= _maxAccGain;
-        cout << "Iteration " << _iterNum << ": maxAccGain = " << _maxAccGain << ", cutSize = " << _cutSize << ", moveNum = " << _bestMoveNum << ", partSize[0] = " << _partSize[0] << ", partSize[1] = " << _partSize[1] << "\n";
         _iterNum++;
     } while (_maxAccGain > 0);
 }

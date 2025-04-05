@@ -1,24 +1,14 @@
-#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include "partitioner.h"
 using namespace std;
 
-static void printRuntime(const string &msg, const chrono::high_resolution_clock::time_point &start)
-{
-    auto end = chrono::high_resolution_clock::now();
-    cout << msg << ": "
-         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
-         << " ms" << endl;
-}
-
 int main(int argc, char **argv)
 {
-    auto start = chrono::high_resolution_clock::now();
     fstream input, output;
 
-    if (argc == 3) {
+    if (argc >= 3) {
         input.open(argv[1], ios::in);
         output.open(argv[2], ios::out);
         if (!input) {
@@ -37,20 +27,21 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    if (argc == 4) {
+        const int seed = atoi(argv[3]);
+        Partitioner *partitioner = new Partitioner(input);
+        partitioner->initPartition(seed);
+        partitioner->partition();
+        const int cutSize = partitioner->getCutSize();
+        cout << cutSize << '\n';
+        partitioner->writeResult(output);
+        return 0;
+    }
+
     Partitioner *partitioner = new Partitioner(input);
-    printRuntime("Parsing input", start);
-
     partitioner->initPartition();
-    printRuntime("Initializing partition", start);
-
     partitioner->partition();
-    printRuntime("Partitioning", start);
-
-    partitioner->printSummary();
-    printRuntime("Printing summary", start);
-
+    // partitioner->printSummary();
     partitioner->writeResult(output);
-    printRuntime("Writing result", start);
-
     return 0;
 }
