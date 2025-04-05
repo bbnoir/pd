@@ -6,6 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include <algorithm>
 #include "cell.h"
 #include "net.h"
 #include "partitioner.h"
@@ -85,6 +86,7 @@ void Partitioner::initPartition(const int seed)
         _cellArray[i]->setPart(part);
         ++_partSize[part];
     }
+    _seed = seed;
 }
 
 void Partitioner::partition()
@@ -115,6 +117,7 @@ void Partitioner::partition()
     _cutSize = initCutSize;
     // iterate FM
     _iterNum = 0;
+    mt19937 gen(_seed);
     do
     {
         // reset bucket lists
@@ -124,7 +127,13 @@ void Partitioner::partition()
         }
         // reset cell gains
         _maxGain[0] = _maxGain[1] = -_maxPinNum-1;
-        for (auto cell : _cellArray) {
+        vector<int> cellIndices(_cellArray.size());
+        iota(cellIndices.begin(), cellIndices.end(), 0);
+        if (_seed != -1) {
+            shuffle(cellIndices.begin(), cellIndices.end(), gen);
+        }
+        for (int idx : cellIndices) {
+            auto cell = _cellArray[idx];
             const int part = cell->getPart();
             int gain = 0;
             for (auto net : cell->getNetList()) {

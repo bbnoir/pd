@@ -29,7 +29,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    vector<int> seedList = {79751, 86272, 15873, 8277, 72972, 1750};
+    vector<int> seedList = {8457, 2196, 1672, 42111, 49081, 99295};
     Partitioner *partitioner = new Partitioner(input);
     input.close();
     vector<Partitioner*> partitioners(6, nullptr);

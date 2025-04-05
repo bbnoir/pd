@@ -1,0 +1,92 @@
+Runtime: 8.15 seconds
+./evaluator/evaluator.sh input_pa1/input_0.dat out/input_0.dat 8.15 | tee log/input_0_eval.log
+[Eval] Run cmd: ./evaluator/checker input_pa1/input_0.dat out/input_0.dat
+[Check] Cut size = 903 matched!
+[Check] Balance passed:: 60300(min) < 89719(G1), 61031(G2) < 90450(max) 
+=================================
+Congratulations! Legal Solution!!
+=================================
+
+[Eval] Your cutsize: 903
+[Eval] Your runtime: 8.15
+[Eval] SCORE = QUALITY_SCORE*0.8 + RUNTIME_SCORE*0.2
+             = 9.1869927*0.8 + 5.933393*0.2
+             = 8.53627
+
+Runtime: 0.05 seconds
+./evaluator/evaluator.sh input_pa1/input_1.dat out/input_1.dat 0.05 | tee log/input_1_eval.log
+[Eval] Run cmd: ./evaluator/checker input_pa1/input_1.dat out/input_1.dat
+[Check] Cut size = 1205 matched!
+[Check] Balance passed:: 1485(min) < 1486(G1), 1514(G2) < 1515(max) 
+=================================
+Congratulations! Legal Solution!!
+=================================
+
+[Eval] Your cutsize: 1205
+[Eval] Your runtime: 0.05
+[Eval] SCORE = QUALITY_SCORE*0.8 + RUNTIME_SCORE*0.2
+             = 9.2249994*0.8 + 6.199997*0.2
+             = 8.62
+
+Runtime: 0.11 seconds
+./evaluator/evaluator.sh input_pa1/input_2.dat out/input_2.dat 0.11 | tee log/input_2_eval.log
+[Eval] Run cmd: ./evaluator/checker input_pa1/input_2.dat out/input_2.dat
+[Check] Cut size = 2133 matched!
+[Check] Balance passed:: 3430(min) < 3431(G1), 3569(G2) < 3570(max) 
+=================================
+Congratulations! Legal Solution!!
+=================================
+
+[Eval] Your cutsize: 2133
+[Eval] Your runtime: 0.11
+[Eval] SCORE = QUALITY_SCORE*0.8 + RUNTIME_SCORE*0.2
+             = 8.9722222*0.8 + 5.745192*0.2
+             = 8.32682
+
+Runtime: 2.54 seconds
+./evaluator/evaluator.sh input_pa1/input_3.dat out/input_3.dat 2.54 | tee log/input_3_eval.log
+[Eval] Run cmd: ./evaluator/checker input_pa1/input_3.dat out/input_3.dat
+[Check] Cut size = 27326 matched!
+[Check] Balance passed:: 29999.7(min) < 30001(G1), 36665(G2) < 36666.3(max) 
+=================================
+Congratulations! Legal Solution!!
+=================================
+
+[Eval] Your cutsize: 27326
+[Eval] Your runtime: 2.54
+[Eval] SCORE = QUALITY_SCORE*0.8 + RUNTIME_SCORE*0.2
+             = 7.5241227*0.8 + 6.1068278*0.2
+             = 7.24067
+
+Runtime: 8.39 seconds
+./evaluator/evaluator.sh input_pa1/input_4.dat out/input_4.dat 8.39 | tee log/input_4_eval.log
+[Eval] Run cmd: ./evaluator/checker input_pa1/input_4.dat out/input_4.dat
+[Check] Cut size = 44500 matched!
+[Check] Balance passed:: 74621.2(min) < 74623(G1), 76127(G2) < 76128.8(max) 
+=================================
+Congratulations! Legal Solution!!
+=================================
+
+[Eval] Your cutsize: 44500
+[Eval] Your runtime: 8.39
+[Eval] SCORE = QUALITY_SCORE*0.8 + RUNTIME_SCORE*0.2
+             = 8.726813*0.8 + 6.324193*0.2
+             = 8.24629
+
+Runtime: 42.74 seconds
+./evaluator/evaluator.sh input_pa1/input_5.dat out/input_5.dat 42.74 | tee log/input_5_eval.log
+[Eval] Run cmd: ./evaluator/checker input_pa1/input_5.dat out/input_5.dat
+[Check] Cut size = 142379 matched!
+[Check] Balance passed:: 189332(min) < 193009(G1), 189480(G2) < 193157(max) 
+=================================
+Congratulations! Legal Solution!!
+=================================
+
+[Eval] Your cutsize: 142379
+[Eval] Your runtime: 42.74
+[Eval] SCORE = QUALITY_SCORE*0.8 + RUNTIME_SCORE*0.2
+             = 8.77493596*0.8 + 6.2673392*0.2
+             = 8.27342
+
+Average score: 8.207
+

@@ -95,6 +95,8 @@ private:
     int                 _unlockNum[2];  // number of unlocked cells
     vector<Cell*>       _moveStack;     // history of cell movement
 
+    int _seed;
+
     // Clean up partitioner
     void clear();
     inline int gain2blistId(int gain) const { return gain + _maxPinNum; }
