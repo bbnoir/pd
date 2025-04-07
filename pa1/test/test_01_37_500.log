@@ -1,0 +1,36 @@
+Running test for input_0
+Seed 4619 -> Cut 1422 -> Final score 8.04134
+Seed 3464 -> Cut 1588 -> Final score 8.14769
+Seed 3464 -> Cut 1588 -> Final score 8.14808
+Seed 8165 -> Cut 1843 -> Final score 8.03104
+Seed 3631 -> Cut 1973 -> Final score 7.98836
+Running test for input_1
+Seed 4583 -> Cut 1202 -> Final score 8.74416
+Seed 3984 -> Cut 1205 -> Final score 8.95
+Seed 8198 -> Cut 1207 -> Final score 8.72929
+Seed 8503 -> Cut 1207 -> Final score 8.72929
+Seed 4246 -> Cut 1208 -> Final score 8.94108
+Running test for input_2
+Seed 3667 -> Cut 2147 -> Final score 8.55417
+Seed 4466 -> Cut 2147 -> Final score 8.55417
+Seed 7538 -> Cut 2151 -> Final score 8.44167
+Seed 3840 -> Cut 2153 -> Final score 8.33500
+Seed 7134 -> Cut 2156 -> Final score 8.31500
+Running test for input_3
+Seed 4138 -> Cut 27485 -> Final score 7.48455
+Seed 4842 -> Cut 27494 -> Final score 7.47027
+Seed 8277 -> Cut 27509 -> Final score 7.55082
+Seed 8277 -> Cut 27509 -> Final score 7.55082
+Seed 6302 -> Cut 27510 -> Final score 7.47017
+Running test for input_4
+Seed 4071 -> Cut 44606 -> Final score 8.10066
+Seed 2232 -> Cut 44663 -> Final score 8.01708
+Seed 5051 -> Cut 44671 -> Final score 8.06019
+Seed 1463 -> Cut 44683 -> Final score 8.19138
+Seed 9280 -> Cut 44685 -> Final score 8.22878
+Running test for input_5
+Seed 9218 -> Cut 142991 -> Final score 7.39934
+Seed 4056 -> Cut 143034 -> Final score 7.42232
+Seed 9411 -> Cut 143117 -> Final score 7.40725
+Seed 8165 -> Cut 143150 -> Final score 7.25943
+Seed 9740 -> Cut 143152 -> Final score 7.36576
