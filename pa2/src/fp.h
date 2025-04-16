@@ -59,7 +59,7 @@ private:
 
     void insertBlockOnContour(BlockInst* block, ContourNode* contourHead);
 
-    std::chrono::duration<double> getElapsedTime() const;
+    double getElapsedTime() const;
 
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;

@@ -20,10 +20,23 @@ FloorPlanner::FloorPlanner(double alpha) : _startTime(chrono::high_resolution_cl
 
 FloorPlanner::~FloorPlanner()
 {
+    for (auto block : _blockLibs)
+    {
+        delete block;
+    }
+    for (auto net : _netLibs)
+    {
+        delete net;
+    }
+    if (_bestSolution != nullptr)
+    {
+        delete _bestSolution;
+    }
 }
 
 void FloorPlanner::readInput(ifstream &inFileBlock, ifstream &inFileNet)
 {
+    // parse blocks
     string s;
     inFileBlock >> s;
     assert(s == "Outline:");
@@ -38,27 +51,27 @@ void FloorPlanner::readInput(ifstream &inFileBlock, ifstream &inFileNet)
     unordered_map<string, int> blockMap;
     unordered_map<string, int> terminalMap;
     vector<pair<int, int>> terminals;
-    for (int i = 0; i < _nBlocks; i++)
+    string name;
+    int w, h;
+    for (int i = 0, end_i = _nBlocks; i < end_i; ++i)
     {
-        string name;
-        int w, h;
         inFileBlock >> name >> w >> h;
         blockMap[name] = i;
         _blockLibs.push_back(new BlockLib(name, w, h));
     }
-    for (int i = 0; i < nTerminals; i++)
+    int x, y;
+    for (int i = 0, end_i = nTerminals; i < end_i; ++i)
     {
-        string name;
-        int x, y;
         inFileBlock >> name >> s >> x >> y;
         assert(s == "terminal");
         terminalMap[name] = i;
         terminals.push_back(make_pair(x, y));
     }
+    // parse nets
     inFileNet >> s;
     assert(s == "NumNets:");
     inFileNet >> _nNets;
-    for (int i = 0; i < _nNets; i++)
+    for (int i = 0, end_i = _nNets; i < end_i; ++i)
     {
         inFileNet >> s;
         assert(s == "NetDegree:");
@@ -66,7 +79,7 @@ void FloorPlanner::readInput(ifstream &inFileBlock, ifstream &inFileNet)
         _netLibs.push_back(net);
         int n;
         inFileNet >> n;
-        for (int j = 0; j < n; j++)
+        for (int j = 0; j < n; ++j)
         {
             inFileNet >> s;
             assert(s != "NetDegree:");
@@ -81,7 +94,7 @@ void FloorPlanner::readInput(ifstream &inFileBlock, ifstream &inFileNet)
             #ifdef DEBUG
             else
             {
-                cerr << "Error: unknown block or terminal: " << s << endl;
+                cerr << "[ERROR] <FloorPlanner::readInput()> unknown block or terminal: " << s << endl;
                 exit(EXIT_FAILURE);
             }
             #endif
@@ -107,7 +120,7 @@ void FloorPlanner::floorplan()
     int sum_iter = 0;
     double sum_runtime = 0;
     #endif
-    while (this->getElapsedTime().count() < TIME_LIMIT)
+    while (this->getElapsedTime() < TIME_LIMIT)
     {
         for (int i = 1; i < numThreads-1; i++)
         {
@@ -487,7 +500,7 @@ Solution *FloorPlanner::sa(const SAParam &param)
         }
         iter++;
         converge = failCount > convergeCount;
-        if (this->getElapsedTime().count() > TIME_LIMIT)
+        if (this->getElapsedTime() > TIME_LIMIT)
         {
             break;
         }
@@ -664,9 +677,9 @@ void FloorPlanner::insertBlockOnContour(BlockInst *block, ContourNode *contourHe
     }
 }
 
-std::chrono::duration<double> FloorPlanner::getElapsedTime() const
+double FloorPlanner::getElapsedTime() const
 {
-    return chrono::high_resolution_clock::now() - _startTime;
+    return chrono::duration<double>(chrono::high_resolution_clock::now() - _startTime).count();
 }
 
 void FloorPlanner::writeOutput(ofstream &outFile)
@@ -679,7 +692,7 @@ void FloorPlanner::writeOutput(ofstream &outFile)
     outFile << sol->width << " " << sol->height << "\n";
     const auto runTime = chrono::duration_cast<chrono::seconds>(chrono::high_resolution_clock::now() - _startTime).count();
     outFile << runTime << "\n";
-    for (int i = 0; i < this->_nBlocks; i++)
+    for (int i = 0, end_i = this->_nBlocks; i < end_i; ++i)
     {
         outFile << this->_blockLibs[i]->getName() << " " << sol->blockLowerLeft[i].first << " " << sol->blockLowerLeft[i].second << " " << sol->blockUpperRight[i].first << " " << sol->blockUpperRight[i].second << "\n";
     }
