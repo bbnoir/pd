@@ -16,6 +16,7 @@ class TreeNode;
 
 struct Solution {
     int cost = INF;
+    double normCost = INF;
     int wireLength = INF;
     int area = INF;
     int width = INF;

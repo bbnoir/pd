@@ -260,6 +260,9 @@ Solution *FloorPlanner::sa(const SAParam &param)
     bool hasBetter = false;
     bool loop_end = false;
 
+    // for normalization
+    double sumArea = 0, sumWL = 0, normArea = 0, normWL = 0;
+
     #ifdef LOG
     ofstream logFile("sa.log");
     #endif
@@ -414,22 +417,34 @@ Solution *FloorPlanner::sa(const SAParam &param)
         }
 
         // calculate cost
-        const int curArea = w * h;
-        int curWireLength = 0;
+        const double curArea = w * h;
+        double curWireLength = 0;
         for (auto net : nets)
         {
             curWireLength += net->calcHPWL();
         }
-        const int curCost = double(curArea) * _alpha + double(curWireLength) * (1 - _alpha);
+        double curCost = double(curArea) * _alpha + double(curWireLength) * (1 - _alpha);
         #ifdef LOG
         logFile << iter << ", " << curCost << ", " << curWireLength << ", " << curArea << ", " << T << "\n";
         #endif
         // save best solution
         bool isInOutline = w <= _outlineWidth && h <= _outlineHeight;
-        if (isInOutline && (curCost < bestSolution->cost))
+        bool saveBest = false;
+        double normCost = INF;
+        if (stage == RANDOM_START)
+        {
+            saveBest = (isInOutline && (curCost < bestSolution->cost));
+        }
+        else
+        {
+            normCost = double(curArea) / normArea * _alpha + double(curWireLength) / normWL * (1 - _alpha);
+            saveBest = (isInOutline && (normCost < bestSolution->normCost));
+        }
+        if (saveBest)
         {
             hasBetter = true;
             bestSolution->cost = curCost;
+            bestSolution->normCost = normCost;
             bestSolution->wireLength = curWireLength;
             bestSolution->area = curArea;
             bestSolution->width = w;
@@ -443,11 +458,20 @@ Solution *FloorPlanner::sa(const SAParam &param)
 
         if (stage == RANDOM_START && iter != randomStartTimes)
         {
+            sumArea += curArea;
+            sumWL += curWireLength;
             iter++;
             continue;
         }
 
-        double curEnergy = (_energyAlpha*curArea+(1-_energyAlpha)*curWireLength);
+        if (iter == randomStartTimes)
+        {
+            normArea = sumArea / double(iter);
+            normWL = sumWL / double(iter);
+            bestSolution->cost = (bestSolution->area) / normArea * _alpha + (bestSolution->wireLength) / normWL * (1 - _alpha);
+        }
+
+        double curEnergy = (_energyAlpha*curArea/normArea+(1-_energyAlpha)*curWireLength/normWL);
         if (w > _outlineWidth || h > _outlineHeight) // only consider ar when out of outline
         {
             double energyAR = double(w) / double(h) / _targetAR;
@@ -457,7 +481,7 @@ Solution *FloorPlanner::sa(const SAParam &param)
             }
             if (energyAR > 1.05)
             {
-                curEnergy *= energyAR;
+                curEnergy *= energyAR * energyAR;
             }
         }
         double deltaEnergy = curEnergy - prevEnergy;

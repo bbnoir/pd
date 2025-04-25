@@ -110,6 +110,8 @@ def main():
     for target, score in highest_score:
         print(f"{target}: {score}")
     print(f"Average score: {sum(score for _, score in highest_score) / len(highest_score):.3f}")
+    # print scores separate by comma
+    print(", ".join(f"{score:.3f}" for _, score in highest_score))
     
 
 if __name__ == "__main__":
