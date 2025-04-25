@@ -2,12 +2,14 @@
 #include <fstream>
 #include "fp.h"
 
+#include <string>
+
 using namespace std;
 
 int main(int argv, char** argc) {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
-    if (argv != 5) {
+    if (argv < 5) {
         cout << "[ERROR] Usage: " << argc[0] << " <alpha> <input.block> <input.nets> <output>" << endl;
         return EXIT_FAILURE;
     }
@@ -35,13 +37,12 @@ int main(int argv, char** argc) {
 
     FloorPlanner *fp = new FloorPlanner(alpha);
     fp->readInput(inFileBlock, inFileNet);
-    fp->floorplan();
-    fp->writeOutput(outFile);
-    delete fp;
-
     inFileBlock.close();
     inFileNet.close();
+    fp->floorplanSeed(stoi(argc[5]));
+    fp->writeOutput(outFile);
     outFile.close();
+    delete fp;
 
     return EXIT_SUCCESS;
 }

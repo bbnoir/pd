@@ -4,6 +4,7 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <random>
 #include "config.h"
 
 class BlockLib;
@@ -20,7 +21,6 @@ struct Solution {
     int width = INF;
     int height = INF;
     int iter = 0;
-    double runtime = 0;
     std::vector<std::pair<int, int>> blockLowerLeft;
     std::vector<std::pair<int, int>> blockUpperRight;
 
@@ -46,7 +46,9 @@ public:
     FloorPlanner(double alpha);
     ~FloorPlanner();
     void readInput(std::ifstream& inFileBlock, std::ifstream& inFileNet);
-    void floorplan();
+    // void floorplan();
+    void floorplanParallel();
+    void floorplanSeed(const int seed);
     void writeOutput(std::ofstream& outFile);
 
 private:
@@ -59,17 +61,19 @@ private:
 
     void insertBlockOnContour(BlockInst* block, ContourNode* contourHead);
 
-    double getElapsedTime() const;
+    inline int genRandom() { return _mt(); }
+    inline int genRandom(int min, int max) { return std::uniform_int_distribution<int>(min, max)(_mt); }
+    inline double genRandomDouble() { return std::uniform_real_distribution<double>(0.0, 1.0)(_mt); }
 
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
+    std::mt19937 _mt;
 
     // sa parameters
     double _alpha = 0;
     double _energyAlpha = 0;
     double _targetAR = 0;
     double _T0 = 0;    // initial temperature
-    double _initProb = 0; // initial probability
     int _normArea = 0;
     int _normWL = 0;
 
