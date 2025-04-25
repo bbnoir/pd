@@ -54,21 +54,20 @@ public:
 
 private:
 
-    TreeNode* genDefaultTree(std::vector<TreeNode*>& treeNodes);
-    Solution* sa(const SAParam& param);
+    TreeNode* genDefaultTree(std::vector<TreeNode*>& treeNodes) const;
+    Solution* sa(const SAParam& param) const;
 
-    TreeNode* removeTreeNode(TreeNode*& root, TreeNode* node, std::vector<int>& touchedNodeId);
-    void insertTreeNode(TreeNode* root, TreeNode* node, TreeNode* parent, std::vector<int>& touchedNodeId);
+    TreeNode* removeTreeNode(TreeNode*& root, TreeNode* node, std::vector<int>& touchedNodeId) const;
+    void insertTreeNode(TreeNode* root, TreeNode* node, TreeNode* parent, std::vector<int>& touchedNodeId, bool left) const;
 
-    void insertBlockOnContour(BlockInst* block, ContourNode* contourHead);
+    void insertBlockOnContour(BlockInst* block, ContourNode* contourHead) const;
 
-    inline int genRandom() { return _mt(); }
-    inline int genRandom(int min, int max) { return std::uniform_int_distribution<int>(min, max)(_mt); }
-    inline double genRandomDouble() { return std::uniform_real_distribution<double>(0.0, 1.0)(_mt); }
+    // inline int genRandom() { return _mt(); }
+    // inline int genRandom(int min, int max) { return std::uniform_int_distribution<int>(min, max)(_mt); }
+    // inline double genRandomDouble() { return std::uniform_real_distribution<double>(0.0, 1.0)(_mt); }
 
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
-    std::mt19937 _mt;
 
     // sa parameters
     double _alpha = 0;

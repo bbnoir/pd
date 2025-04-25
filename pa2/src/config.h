@@ -8,6 +8,6 @@ constexpr double R = 0.95; // for cooling
 
 constexpr double RANDOM_START_TIMES = 2.5; // * numBlocks
 
-constexpr int numThreads = 4;
+constexpr int numThreads = 5;
 
 // variables

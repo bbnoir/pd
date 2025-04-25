@@ -39,7 +39,14 @@ int main(int argv, char** argc) {
     fp->readInput(inFileBlock, inFileNet);
     inFileBlock.close();
     inFileNet.close();
-    fp->floorplanSeed(stoi(argc[5]));
+    if (argv == 6)
+    {
+        fp->floorplanSeed(stoi(argc[5]));
+    }
+    else
+    {
+        fp->floorplanParallel();
+    }
     fp->writeOutput(outFile);
     outFile.close();
     delete fp;

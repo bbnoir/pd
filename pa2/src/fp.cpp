@@ -102,28 +102,17 @@ void FloorPlanner::readInput(ifstream &inFileBlock, ifstream &inFileNet)
 
 void FloorPlanner::floorplanParallel()
 {
-    // initSA();
-    // _energyAlpha = max(0.5, _alpha); // handle extereme case
+    int seeds[5] = {65015, 89123, 14315, 56490, 97011};
     _energyAlpha = _alpha;
     _targetAR = double(_outlineWidth) / double(_outlineHeight);
-    srand(42);
-    mt19937 mt(time(0));
     SAParam param[numThreads];
-    param[0].seed = rand();
-    bool everInOutline = false;
-    _bestSolution = sa(param[0]);
-    #ifdef LOG
-    int try_count = 0;
-    int found_count = 0;
-    int sum_iter = 0;
-    #endif
-    for (int i = 1; i < numThreads-1; i++)
-    {
-        param[i].seed = rand();
-    }
-    param[numThreads-1].seed = mt();
+    _bestSolution = nullptr;
     vector<bool> foundList(numThreads, false);
-    vector<bool> foundBetterList(numThreads, false);
+    vector<Solution*> solList(numThreads, nullptr);
+    for (int i = 0; i < numThreads; i++)
+    {
+        param[i].seed = seeds[i];
+    }
     #pragma omp parallel for num_threads(numThreads)
     for (int i = 0; i < numThreads; i++)
     {
@@ -131,30 +120,29 @@ void FloorPlanner::floorplanParallel()
         if (sol->isInOutline(_outlineWidth, _outlineHeight))
         {
             foundList[i] = true;
-            everInOutline = true;
-        }
-        if (_bestSolution->cost > sol->cost)
-        {
-            foundBetterList[i] = true;
-            #pragma omp critical
-            {
-                if (_bestSolution->cost > sol->cost)
-                {
-                    delete _bestSolution;
-                    _bestSolution = sol;
-                }
-            }
+            solList[i] = sol;
         }
         else
         {
             delete sol;
         }
     }
-    if (param[0].convergePow < 2)
+    for (int i = 0; i < numThreads; i++)
     {
-        for (int i = 0; i < numThreads; i++)
+        if (foundList[i])
         {
-            param[i].convergePow += 0.1;
+            if (_bestSolution == nullptr || solList[i]->cost < _bestSolution->cost)
+            {
+                if (_bestSolution != nullptr)
+                {
+                    delete _bestSolution;
+                }
+                _bestSolution = solList[i];
+            }
+            else
+            {
+                delete solList[i];
+            }
         }
     }
 }
@@ -163,7 +151,7 @@ void FloorPlanner::floorplanSeed(const int seed)
 {
     _energyAlpha = _alpha;
     _targetAR = double(_outlineWidth) / double(_outlineHeight);
-    _mt.seed(seed);
+    // _mt.seed(seed);
     SAParam param;
     param.seed = seed;
     int try_count = 0;
@@ -177,7 +165,7 @@ void FloorPlanner::floorplanSeed(const int seed)
     _bestSolution = sol;
 }
 
-TreeNode* FloorPlanner::genDefaultTree(vector<TreeNode*>& treeNodes)
+TreeNode* FloorPlanner::genDefaultTree(vector<TreeNode*>& treeNodes) const
 {
     for (int i = 0, end_i = _nBlocks; i < end_i; ++i)
     {
@@ -201,8 +189,20 @@ TreeNode* FloorPlanner::genDefaultTree(vector<TreeNode*>& treeNodes)
     return treeNodes[0];
 }
 
-Solution *FloorPlanner::sa(const SAParam &param)
+static int genRandom(mt19937 &mt, int min, int max)
 {
+    return std::uniform_int_distribution<int>(min, max)(mt);
+}
+
+static double genRandomDouble(mt19937 &mt)
+{
+    return std::uniform_real_distribution<double>(0.0, 1.0)(mt);
+}
+
+Solution *FloorPlanner::sa(const SAParam &param) const
+{
+    mt19937 mt;
+    mt.seed(param.seed);
     // initialize solution
     Solution* bestSolution = new Solution(_nBlocks);
     vector<BlockInst*> blocks;
@@ -224,7 +224,11 @@ Solution *FloorPlanner::sa(const SAParam &param)
     }
     if (param.shuffleInit)
     {
-        random_shuffle(assignBlockIdx.begin(), assignBlockIdx.end());
+        for (int i = 0, end_i = _nBlocks; i < end_i; ++i)
+        {
+            int j = genRandom(mt, i, _nBlocks - 1);
+            swap(assignBlockIdx[i], assignBlockIdx[j]);
+        }
     }
     for (int i = 0, end_i = _nBlocks; i < end_i; ++i)
     {
@@ -346,8 +350,8 @@ Solution *FloorPlanner::sa(const SAParam &param)
         }
 
         // perturb
-        const int perturbMode = genRandom(0, 2); // 0: rotate, 1: swap, 2: move
-        const int idx1 = genRandom(0, _nBlocks - 1);
+        const int perturbMode = genRandom(mt, 0, 2); // 0: rotate, 1: swap, 2: move
+        const int idx1 = genRandom(mt, 0, _nBlocks - 1);
         int idx2;
         if (!(stage == RANDOM_START && iter != randomStartTimes))
         {
@@ -364,7 +368,7 @@ Solution *FloorPlanner::sa(const SAParam &param)
         }
         else if (perturbMode == 1) // swap
         {
-            idx2 = (idx1 + 1 + genRandom(0, _nBlocks - 2)) % _nBlocks;
+            idx2 = (idx1 + 1 + genRandom(mt, 0, _nBlocks - 2)) % _nBlocks;
             treeNodes[idx1]->swapBlock(treeNodes[idx2]);
         }
         else if (perturbMode == 2) // move
@@ -372,8 +376,8 @@ Solution *FloorPlanner::sa(const SAParam &param)
             TreeNode* moveNode = treeNodes[idx1];
             touchedNodeId.push_back(idx1);
             TreeNode* removedNode = removeTreeNode(root, moveNode, touchedNodeId);
-            idx2 = (removedNode->getId() + 1 + genRandom(0, _nBlocks - 2)) % _nBlocks;
-            insertTreeNode(root, removedNode, treeNodes[idx2], touchedNodeId);
+            idx2 = (removedNode->getId() + 1 + genRandom(mt, 0, _nBlocks - 2)) % _nBlocks;
+            insertTreeNode(root, removedNode, treeNodes[idx2], touchedNodeId, genRandom(mt, 0, 1) == 0);
         }
 
         // compact
@@ -496,7 +500,7 @@ Solution *FloorPlanner::sa(const SAParam &param)
         else if (stage == ANNEALING || stage == RE_ANNEALING)
         {
             const double prob = exp(-deltaEnergy / T);
-            const double r = genRandomDouble();
+            const double r = genRandomDouble(mt);
             if (r < prob)
             {
                 reject = false;
@@ -559,7 +563,7 @@ Solution *FloorPlanner::sa(const SAParam &param)
     return bestSolution;
 }
 
-TreeNode* FloorPlanner::removeTreeNode(TreeNode* &root, TreeNode *node, vector<int>& touchedNodeId)
+TreeNode* FloorPlanner::removeTreeNode(TreeNode* &root, TreeNode *node, vector<int>& touchedNodeId) const
 {
     TreeNode* parent = node->getParent();
     TreeNode* leftChild = node->getLeftChild();
@@ -624,19 +628,23 @@ TreeNode* FloorPlanner::removeTreeNode(TreeNode* &root, TreeNode *node, vector<i
     }
     else
     {
-        TreeNode* replaceNode = (genRandom(0, 1) == 0) ? leftChild : rightChild;
+        TreeNode* replaceNode = leftChild;
+        if (parent != nullptr && node == parent->getRightChild())
+        {
+            replaceNode = rightChild;
+        }
         touchedNodeId.push_back(replaceNode->getId());
         node->swapBlock(replaceNode);
         return removeTreeNode(root, replaceNode, touchedNodeId);
     }
 }
 
-void FloorPlanner::insertTreeNode(TreeNode* root, TreeNode *node, TreeNode *parent, vector<int>& touchedNodeId)
+void FloorPlanner::insertTreeNode(TreeNode* root, TreeNode *node, TreeNode *parent, vector<int>& touchedNodeId, bool left) const
 {
     assert(parent != nullptr);
     touchedNodeId.push_back(parent->getId());
     node->setParent(parent);
-    if (genRandom(0, 1) == 0)
+    if (left)
     {
         TreeNode* leftChild = parent->getLeftChild();
         node->setLeftChild(leftChild);
@@ -662,7 +670,7 @@ void FloorPlanner::insertTreeNode(TreeNode* root, TreeNode *node, TreeNode *pare
     }
 }
 
-void FloorPlanner::insertBlockOnContour(BlockInst *block, ContourNode *contourHead)
+void FloorPlanner::insertBlockOnContour(BlockInst *block, ContourNode *contourHead) const
 {
     const int blockX = block->getX();
     const int blockX2 = blockX + block->getWidth();
@@ -712,7 +720,7 @@ void FloorPlanner::insertBlockOnContour(BlockInst *block, ContourNode *contourHe
 
 void FloorPlanner::writeOutput(ofstream &outFile)
 {
-    if (!(_bestSolution->isInOutline(_outlineWidth, _outlineHeight)))
+    if (_bestSolution == nullptr || !(_bestSolution->isInOutline(_outlineWidth, _outlineHeight)))
     {
         cout << "-1\n";
         return;
