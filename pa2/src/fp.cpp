@@ -168,12 +168,12 @@ void FloorPlanner::floorplanSeed(const int seed)
     param.seed = seed;
     int try_count = 0;
     Solution* sol = sa(param);
-    while (sol->isInOutline(_outlineWidth, _outlineHeight) == false)
-    {
-        delete sol;
-        sol = sa(param);
-        try_count++;
-    }
+    // while (sol->isInOutline(_outlineWidth, _outlineHeight) == false)
+    // {
+    //     delete sol;
+    //     sol = sa(param);
+    //     try_count++;
+    // }
     _bestSolution = sol;
 }
 
@@ -680,6 +680,15 @@ void FloorPlanner::insertBlockOnContour(BlockInst *block, ContourNode *contourHe
 
 void FloorPlanner::writeOutput(ofstream &outFile)
 {
+    if (!(_bestSolution->isInOutline(_outlineWidth, _outlineHeight)))
+    {
+        cout << "-1\n";
+        return;
+    }
+    else
+    {
+        cout << _bestSolution->cost << "\n";
+    }
     assert(this->_bestSolution != nullptr);
     const Solution *const sol = this->_bestSolution;
     outFile << sol->cost << "\n";
