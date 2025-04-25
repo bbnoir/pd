@@ -250,15 +250,19 @@ Solution *FloorPlanner::sa(const SAParam &param)
     bool converge = false;
     int failCount = 0;
     const int randomStartTimes = RANDOM_START_TIMES * _nBlocks;
-    const int convergeCount = min(int(pow(_nBlocks, param.convergePow)), 6000);
+    const int convergeCount = min(_nBlocks*5, 6000);
     double sumDeltaEnergy = 0;
     int upHillCount = 0;
-    const int reduceCountThr = 0.5 * _nBlocks;
-    const int reduceCountThr2 = 0.1 * _nBlocks;
+    const int reduceCountThr = 1.5 * _nBlocks;
+    const int reduceCountThr2 = 1.5 * _nBlocks;
     int reduceCount = 0;
-    const double minT = 0.001;
+    const double minT = 0.00001;
     bool hasBetter = false;
     bool loop_end = false;
+
+    #ifdef LOG
+    ofstream logFile("sa.log");
+    #endif
 
     // SA loop
     while (iter < maxIter)
@@ -301,9 +305,10 @@ Solution *FloorPlanner::sa(const SAParam &param)
                 }
                 else
                 {
-                    break;
+                    loop_end = true;
                 }
             }
+            break;
         case RE_ANNEALING:
             reduceCount++;
             if (reduceCount > reduceCountThr2)
@@ -316,16 +321,16 @@ Solution *FloorPlanner::sa(const SAParam &param)
             }
             if (converge)
             {
-                if (hasBetter)
-                {
-                    hasBetter = false;
-                    failCount = 0;
-                    T = (sumDeltaEnergy / double(upHillCount)) / -log(initP2);
-                }
-                else
-                {
+                // if (hasBetter)
+                // {
+                //     hasBetter = false;
+                //     failCount = 0;
+                //     T = (sumDeltaEnergy / double(upHillCount)) / -log(initP2);
+                // }
+                // else
+                // {
                     loop_end = true;
-                }
+                // }
             }
             break;
         default:
@@ -416,6 +421,9 @@ Solution *FloorPlanner::sa(const SAParam &param)
             curWireLength += net->calcHPWL();
         }
         const int curCost = double(curArea) * _alpha + double(curWireLength) * (1 - _alpha);
+        #ifdef LOG
+        logFile << iter << ", " << curCost << ", " << curWireLength << ", " << curArea << ", " << T << "\n";
+        #endif
         // save best solution
         bool isInOutline = w <= _outlineWidth && h <= _outlineHeight;
         if (isInOutline && (curCost < bestSolution->cost))

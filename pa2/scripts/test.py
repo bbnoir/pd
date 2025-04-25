@@ -6,6 +6,7 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 input_dir = "input_pa2"
+# targets = ["ami33"]
 targets = ["ami33", "ami49", "apte", "hp", "xerox"]
 test_dir = "testdir"
 # subdir
@@ -50,6 +51,8 @@ def main():
     random_num = 2000
     seeds = [random.randint(0, 100000) for _ in range(random_num)]
 
+    highest_score = []
+
     # Run each test target
     for target in targets:
         print(f"Running test for {target}")
@@ -65,7 +68,7 @@ def main():
                     seed = future_to_seed[future]
                     result = future.result()
                     if result is not None:
-                        log.write(f"seed {seed} -> {result}\n")
+                        # log.write(f"seed {seed} -> {result}\n")
                         if result != -1:
                             scores_and_seeds.append((result, seed))
                     else:
@@ -74,6 +77,8 @@ def main():
             # Sort by score (ascending) and get top 5
             scores_and_seeds.sort()
             top_5 = scores_and_seeds[:10]
+
+            highest = -100.0
             
             log.write(f"Top 10 scores for {target}:\n")
             for rank, (score, seed) in enumerate(top_5, 1):
@@ -90,13 +95,22 @@ def main():
                 )
                 # log.write(result.stdout)
                 final_score = result.stdout.split()[-1]
+                highest = max(highest, float(final_score))
                 log.write(f"Seed {seed} -> Cost {score} -> Final score {final_score}\n")
+            
+            highest_score.append((target, highest))
         
         # clean out
         for seed in seeds:
             out_file = f"{output_dir}/{target}_{seed}.out"
             if os.path.exists(out_file):
                 os.remove(out_file)
+        
+    print("Highest scores:")
+    for target, score in highest_score:
+        print(f"{target}: {score}")
+    print(f"Average score: {sum(score for _, score in highest_score) / len(highest_score):.3f}")
+    
 
 if __name__ == "__main__":
     main()
