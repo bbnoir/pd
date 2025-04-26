@@ -42,12 +42,12 @@ clean:
 ALPHA = 0.5
 
 define TEST
-	./$(EXE) $(ALPHA) $(TEST_DIR)/$1.block $(TEST_DIR)/$1.nets $(OUTPUT_DIR)/$1.rpt $2 | tee $(LOG_DIR)/$1.log
+	./$(EXE) $(ALPHA) $(TEST_DIR)/$1.block $(TEST_DIR)/$1.nets $(OUTPUT_DIR)/$1.rpt | tee $(LOG_DIR)/$1.log
 	bash evaluator/evaluator.sh $(TEST_DIR)/$1.block $(TEST_DIR)/$1.nets $(OUTPUT_DIR)/$1.rpt $(ALPHA) | tee -a $(LOG_DIR)/$1.log
 endef
 
 t1: default
-	$(call TEST,ami33,51517)
+	$(call TEST,ami33)
 .PHONY: t1
 
 t2: default
@@ -95,11 +95,3 @@ v5:
 
 vall: v1 v2 v3 v4 v5
 .PHONY: vall
-
-test: default
-	./scripts/test.py
-.PHONY: test
-
-plot: debug
-	./scripts/plot.py -i sa.log
-.PHONY: plot

@@ -21,7 +21,7 @@ def plot_sa(input_file, output_file):
     temperature = data[:, 4] # y4
 
     # Create a figure with 4 subplots
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 16), sharex=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 16), sharex=True)
 
     # Plot cost in the first subplot
     ax1.plot(iter, cost, 'b-')
@@ -49,14 +49,6 @@ def plot_sa(input_file, output_file):
     ax3.tick_params(axis='y', labelcolor='g')
     ax3.set_title('Area over Iterations')
     ax3.grid(True)
-    
-    # Plot temperature in the fourth subplot
-    ax4.plot(iter, temperature, 'm-')
-    ax4.set_xlabel('Iteration')
-    ax4.set_ylabel('Temperature', color='m')
-    ax4.tick_params(axis='y', labelcolor='m')
-    ax4.set_title('Temperature over Iterations')
-    ax4.grid(True)
 
     # Adjust layout
     plt.tight_layout()

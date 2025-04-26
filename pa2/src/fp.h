@@ -47,9 +47,7 @@ public:
     FloorPlanner(double alpha);
     ~FloorPlanner();
     void readInput(std::ifstream& inFileBlock, std::ifstream& inFileNet);
-    // void floorplan();
     void floorplanParallel();
-    void floorplanSeed(const int seed);
     void writeOutput(std::ofstream& outFile);
 
 private:
@@ -62,18 +60,16 @@ private:
 
     void insertBlockOnContour(BlockInst* block, ContourNode* contourHead) const;
 
-    // inline int genRandom() { return _mt(); }
-    // inline int genRandom(int min, int max) { return std::uniform_int_distribution<int>(min, max)(_mt); }
-    // inline double genRandomDouble() { return std::uniform_real_distribution<double>(0.0, 1.0)(_mt); }
-
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
+    double getElapsedTime() const {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - _startTime).count() / 1000.0;
+    }
 
     // sa parameters
     double _alpha = 0;
     double _energyAlpha = 0;
     double _targetAR = 0;
-    double _T0 = 0;    // initial temperature
     int _normArea = 0;
     int _normWL = 0;
 

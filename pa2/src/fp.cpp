@@ -12,6 +12,16 @@
 
 using namespace std;
 
+static int genRandom(mt19937 &mt, int min, int max)
+{
+    return std::uniform_int_distribution<int>(min, max)(mt);
+}
+
+static double genRandomDouble(mt19937 &mt)
+{
+    return std::uniform_real_distribution<double>(0.0, 1.0)(mt);
+}
+
 FloorPlanner::FloorPlanner(double alpha) : _startTime(chrono::high_resolution_clock::now()), _alpha(alpha)
 {
 }
@@ -145,24 +155,24 @@ void FloorPlanner::floorplanParallel()
             }
         }
     }
-}
-
-void FloorPlanner::floorplanSeed(const int seed)
-{
-    _energyAlpha = _alpha;
-    _targetAR = double(_outlineWidth) / double(_outlineHeight);
-    // _mt.seed(seed);
-    SAParam param;
-    param.seed = seed;
-    int try_count = 0;
-    Solution* sol = sa(param);
-    // while (sol->isInOutline(_outlineWidth, _outlineHeight) == false)
-    // {
-    //     delete sol;
-    //     sol = sa(param);
-    //     try_count++;
-    // }
-    _bestSolution = sol;
+    if (_bestSolution == nullptr)
+    {
+        mt19937 mt;
+        do
+        {
+            SAParam randomParam;
+            randomParam.seed = genRandom(mt, 0, 100000);
+            Solution* sol = sa(randomParam);
+            if (sol->isInOutline(_outlineWidth, _outlineHeight))
+            {
+                _bestSolution = sol;
+            }
+            else
+            {
+                delete sol;
+            }
+        } while (_bestSolution == nullptr && getElapsedTime() < 600);
+    }
 }
 
 TreeNode* FloorPlanner::genDefaultTree(vector<TreeNode*>& treeNodes) const
@@ -187,16 +197,6 @@ TreeNode* FloorPlanner::genDefaultTree(vector<TreeNode*>& treeNodes) const
         }
     }
     return treeNodes[0];
-}
-
-static int genRandom(mt19937 &mt, int min, int max)
-{
-    return std::uniform_int_distribution<int>(min, max)(mt);
-}
-
-static double genRandomDouble(mt19937 &mt)
-{
-    return std::uniform_real_distribution<double>(0.0, 1.0)(mt);
 }
 
 Solution *FloorPlanner::sa(const SAParam &param) const
@@ -267,10 +267,6 @@ Solution *FloorPlanner::sa(const SAParam &param) const
     // for normalization
     double sumArea = 0, sumWL = 0, normArea = 0, normWL = 0;
 
-    #ifdef LOG
-    ofstream logFile("sa.log");
-    #endif
-
     // SA loop
     while (iter < maxIter)
     {
@@ -328,16 +324,7 @@ Solution *FloorPlanner::sa(const SAParam &param) const
             }
             if (converge)
             {
-                // if (hasBetter)
-                // {
-                //     hasBetter = false;
-                //     failCount = 0;
-                //     T = (sumDeltaEnergy / double(upHillCount)) / -log(initP2);
-                // }
-                // else
-                // {
-                    loop_end = true;
-                // }
+                loop_end = true;
             }
             break;
         default:
@@ -428,9 +415,6 @@ Solution *FloorPlanner::sa(const SAParam &param) const
             curWireLength += net->calcHPWL();
         }
         double curCost = double(curArea) * _alpha + double(curWireLength) * (1 - _alpha);
-        #ifdef LOG
-        logFile << iter << ", " << curCost << ", " << curWireLength << ", " << curArea << ", " << T << "\n";
-        #endif
         // save best solution
         bool isInOutline = w <= _outlineWidth && h <= _outlineHeight;
         bool saveBest = false;
@@ -720,15 +704,6 @@ void FloorPlanner::insertBlockOnContour(BlockInst *block, ContourNode *contourHe
 
 void FloorPlanner::writeOutput(ofstream &outFile)
 {
-    if (_bestSolution == nullptr || !(_bestSolution->isInOutline(_outlineWidth, _outlineHeight)))
-    {
-        cout << "-1\n";
-        return;
-    }
-    else
-    {
-        cout << _bestSolution->cost << "\n";
-    }
     assert(this->_bestSolution != nullptr);
     const Solution *const sol = this->_bestSolution;
     outFile << sol->cost << "\n";
