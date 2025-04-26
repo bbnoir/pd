@@ -102,7 +102,7 @@ void FloorPlanner::readInput(ifstream &inFileBlock, ifstream &inFileNet)
 
 void FloorPlanner::floorplanParallel()
 {
-    int seeds[5] = {65015, 89123, 14315, 56490, 97011};
+    int seeds[5] = {10190, 66679, 10687, 36199, 11752};
     _energyAlpha = _alpha;
     _targetAR = double(_outlineWidth) / double(_outlineHeight);
     SAParam param[numThreads];
@@ -254,13 +254,13 @@ Solution *FloorPlanner::sa(const SAParam &param) const
     bool converge = false;
     int failCount = 0;
     const int randomStartTimes = RANDOM_START_TIMES * _nBlocks;
-    const int convergeCount = min(_nBlocks*5, 6000);
+    const int convergeCount = min(_nBlocks*100, 6000);
     double sumDeltaEnergy = 0;
     int upHillCount = 0;
     const int reduceCountThr = 1.5 * _nBlocks;
     const int reduceCountThr2 = 1.5 * _nBlocks;
     int reduceCount = 0;
-    const double minT = 0.00001;
+    const double minT = 0.001;
     bool hasBetter = false;
     bool loop_end = false;
 
