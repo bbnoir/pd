@@ -4,6 +4,7 @@ import argparse
 
 def argparse_args():
     parser = argparse.ArgumentParser(description='Draw a floorplan.')
+    parser.add_argument('-t', '--title', type=str, default='Floorplan', help='Title of the plot')
     parser.add_argument('-b', '--block', type=str, required=True, help='Path to the block file')
     parser.add_argument('-r', '--rpt', type=str, required=True, help='Path to the rpt file')
     parser.add_argument('-o', '--output', type=str, default='floorplan.png', help='Output file name')
@@ -12,7 +13,7 @@ def argparse_args():
 def draw_block(name, x, y, w, h):
     pass
 
-def draw_floorplan(block_file, rpt_file, output_file):
+def draw_floorplan(block_file, rpt_file, output_file, title):
     # Read block file
     outline_width = 0
     outline_height = 0
@@ -88,7 +89,7 @@ def draw_floorplan(block_file, rpt_file, output_file):
     plt.xlim(0, outline_width)
     plt.ylim(0, outline_height)
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.title('Floorplan')
+    plt.title(title)
     plt.plot([0, outline_width], [0, 0], 'k-', linewidth=1)
     plt.plot([0, 0], [0, outline_height], 'k-', linewidth=1)
     plt.plot([outline_width, outline_width], [0, outline_height], 'k-', linewidth=1)
@@ -110,4 +111,4 @@ def draw_floorplan(block_file, rpt_file, output_file):
 
 if __name__ == "__main__":
     args = argparse_args()
-    draw_floorplan(args.block, args.rpt, args.output)
+    draw_floorplan(args.block, args.rpt, args.output, args.title)

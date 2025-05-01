@@ -70,7 +70,7 @@ tall: default t1 t2 t3 t4 t5
 .PHONY: tall
 
 define VISUALIZE
-	python3 scripts/draw.py -b $(TEST_DIR)/$1.block -r $(OUTPUT_DIR)/$1.rpt -o viz/$1.png
+	python3 scripts/draw.py -b $(TEST_DIR)/$1.block -r $(OUTPUT_DIR)/$1.rpt -o viz/$1.png -t $1
 endef
 
 v1:
