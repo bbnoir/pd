@@ -13,3 +13,18 @@ bin/$(EXECUTABLE): $(OBJECTS)
 
 clean:
 	rm -rf *.o bin/$(EXECUTABLE)
+
+TEST_DIR=benchmark
+LOG_DIR=log
+
+define TEST
+	./bin/$(EXECUTABLE) -aux $(TEST_DIR)/$1
+endef
+
+t1: all
+	$(call TEST,ibm01/ibm01-cu85.aux)
+.PHONY: t1
+
+t2: all
+	$(call TEST,ibm05/ibm05.aux)
+.PHONY: t2

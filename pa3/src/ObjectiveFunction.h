@@ -74,18 +74,41 @@ class ExampleFunction : public BaseFunction {
     Placement &placement_;
 };
 
-/**
- * @brief Wirelength function
- */
-class Wirelength : public BaseFunction {
-    // TODO: Implement the wirelength function, add necessary data members for caching
-   public:
-    /////////////////////////////////
-    // Methods
-    /////////////////////////////////
+// /**
+//  * @brief Wirelength function
+//  */
+// class Wirelength : public BaseFunction {
+//     // TODO: Implement the wirelength function, add necessary data members for caching
+//    public:
+//     /////////////////////////////////
+//     // Methods
+//     /////////////////////////////////
+//     Wirelength(Placement &placement);
 
+//     const double &operator()(const std::vector<Point2<double>> &input) override;
+//     const std::vector<Point2<double>> &Backward() override;
+
+//    private:
+//     std::vector<Point2<double>> input_;  // Cache the input for backward pass
+//     Placement &placement_;
+//     double gamma_; 
+// };
+
+class WAWirelength : public BaseFunction {
+public:
+    WAWirelength(Placement &placement);
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
+private:
+    std::vector<Point2<double>> input_;
+    Placement &placement_;
+    double gamma_;
+
+    std::vector<double> x_max_, y_max_;
+    std::vector<double> x_max_sum_w_exp_, x_min_sum_w_exp_;
+    std::vector<double> y_max_sum_w_exp_, y_min_sum_w_exp_;
+    std::vector<double> x_max_sum_exp_, x_min_sum_exp_;
+    std::vector<double> y_max_sum_exp_, y_min_sum_exp_;
 };
 
 /**
@@ -97,9 +120,14 @@ class Density : public BaseFunction {
     /////////////////////////////////
     // Methods
     /////////////////////////////////
+    Density(Placement &placement);
 
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
+
+   private:
+    std::vector<Point2<double>> input_;  // Cache the input for backward pass
+    Placement &placement_;
 };
 
 /**
@@ -117,13 +145,15 @@ class ObjectiveFunction : public BaseFunction {
     /////////////////////////////////
     // Methods
     /////////////////////////////////
+    ObjectiveFunction(Placement &placement);
 
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
 
    private:
-    Wirelength wirelength_;
+    WAWirelength wirelength_;
     Density density_;
+    double lambda_;
 };
 
 #endif  // OBJECTIVEFUNCTION_H

@@ -14,37 +14,47 @@ GlobalPlacer::GlobalPlacer(Placement &placement)
 
 void GlobalPlacer::place() {
     ////////////////////////////////////////////////////////////////////
-    // This section is an example for analytical methods.
-    // The objective is to minimize the following function:
-    //      f(x,y) = 3*x^2 + 2*x*y + 2*y^2 + 7
-    //
-    // If you use other methods, you can skip and delete it directly.
-    ////////////////////////////////////////////////////////////////////
-    std::vector<Point2<double>> t(1);                   // Optimization variables (in this example, there is only one t)
-    ExampleFunction foo(_placement);                    // Objective function
-    const double kAlpha = 0.01;                         // Constant step size
-    SimpleConjugateGradient optimizer(foo, t, kAlpha);  // Optimizer
-
-    // Set initial point
-    t[0] = 4.;  // This set both t[0].x and t[0].y to 4.
-
-    // Initialize the optimizer
-    optimizer.Initialize();
-
-    // Perform optimization, the termination condition is that the number of iterations reaches 100
-    // TODO: You may need to change the termination condition, which is determined by the overflow ratio.
-    for (size_t i = 0; i < 100; ++i) {
-        optimizer.Step();
-        printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(t), t[0].x, t[0].y);
-    }
-
-    ////////////////////////////////////////////////////////////////////
     // Global placement algorithm
     ////////////////////////////////////////////////////////////////////
 
-    // TODO: Implement your global placement algorithm here.
-    const size_t num_modules = _placement.numModules();  // You may modify this line.
-    std::vector<Point2<double>> positions(num_modules);  // Optimization variables (positions of modules). You may modify this line.
+    // Randomly initialize the positions of modules
+    const size_t num_modules = _placement.numModules();
+    std::vector<Point2<double>> positions(num_modules);
+    const double outline_width = _placement.boundryRight() - _placement.boundryLeft();
+    const double outline_height = _placement.boundryTop() - _placement.boundryBottom();
+    const double mid_x = _placement.boundryLeft() + outline_width / 2;
+    const double mid_y = _placement.boundryBottom() + outline_height / 2;
+    const double random_width = outline_width * 0.5;
+    const double random_height = outline_height * 0.5;
+    srand(42);
+    for (size_t i = 0, end_i = num_modules; i < end_i; ++i) {
+        Module &module = _placement.module(i);
+        if (module.isFixed()) {
+            positions[i].x = module.x();
+            positions[i].y = module.y();
+        } else {
+            positions[i].x = mid_x + (rand() % 1000) / 1000. * random_width - random_width / 2;
+            positions[i].y = mid_y + (rand() % 1000) / 1000. * random_height - random_height / 2;
+        }
+    }
+
+    const double kAlpha = 0.1;
+    ObjectiveFunction objFunc(_placement);
+    SimpleConjugateGradient optimizer(objFunc, positions, kAlpha);
+    optimizer.Initialize();
+    for (size_t i = 0, end_i = 1000; i < end_i; ++i) {
+        cout << "iter = " << i << ", f = " << objFunc(positions) << "\n";
+        optimizer.Step();
+        for (size_t j = 0, end_j = num_modules; j < end_j; ++j) {
+            Module &module = _placement.module(j);
+            if (module.isFixed()) {
+                positions[j].x = module.x();
+                positions[j].y = module.y();
+            // } else {
+            //     module.setPosition(positions[j].x, positions[j].y);
+            }
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////
     // Write the placement result into the database. (You may modify this part.)
