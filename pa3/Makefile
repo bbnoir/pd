@@ -18,13 +18,13 @@ TEST_DIR=benchmark
 LOG_DIR=log
 
 define TEST
-	./bin/$(EXECUTABLE) -aux $(TEST_DIR)/$1
+	./bin/$(EXECUTABLE) -aux $(TEST_DIR)/$1.aux | tee $(LOG_DIR)/$1.log
 endef
 
 t1: all
-	$(call TEST,ibm01/ibm01-cu85.aux)
+	$(call TEST,ibm01/ibm01-cu85)
 .PHONY: t1
 
 t2: all
-	$(call TEST,ibm05/ibm05.aux)
+	$(call TEST,ibm05/ibm05)
 .PHONY: t2

@@ -24,8 +24,8 @@ void GlobalPlacer::place() {
     const double outline_height = _placement.boundryTop() - _placement.boundryBottom();
     const double mid_x = _placement.boundryLeft() + outline_width / 2;
     const double mid_y = _placement.boundryBottom() + outline_height / 2;
-    const double random_width = outline_width * 0.5;
-    const double random_height = outline_height * 0.5;
+    const double random_width = outline_width * 0.1;
+    const double random_height = outline_height * 0.1;
     srand(42);
     for (size_t i = 0, end_i = num_modules; i < end_i; ++i) {
         Module &module = _placement.module(i);
@@ -33,21 +33,21 @@ void GlobalPlacer::place() {
             positions[i].x = module.x();
             positions[i].y = module.y();
         } else {
-            positions[i].x = mid_x + (rand() % 1000) / 1000. * random_width - random_width / 2;
-            positions[i].y = mid_y + (rand() % 1000) / 1000. * random_height - random_height / 2;
+            positions[i].x = mid_x + double(rand()) / RAND_MAX * random_width - random_width / 2;
+            positions[i].y = mid_y + double(rand()) / RAND_MAX * random_height - random_height / 2;
         }
     }
 
-    const double kAlpha = 0.1;
-    ObjectiveFunction objFunc(_placement);
+    const double kAlpha = 0.3;
+    ObjectiveFunction objFunc(_placement, positions);
     SimpleConjugateGradient optimizer(objFunc, positions, kAlpha);
     optimizer.Initialize();
+    double prev_overflow_ratio = 1;
     for (size_t i = 0, end_i = 1000; i < end_i; ++i) {
         if (i == 30) { objFunc.set_init_lambda(); }
-        if (i % 20 == 0) { objFunc.scale_lambda(2); }
-        double f = objFunc(positions), wl = objFunc.wl_value(), d = objFunc.d_value();
-        printf("iter %6ld: f = %10.2e, lambda = %10.2e, wl = %10.2e (%3.1f%%), d = %10.2e (%3.1f%%)\n", 
-               i, f, objFunc.lambda(), wl, wl / f * 100, d, d * objFunc.lambda() / f * 100);
+        double f = objFunc(positions), wl = objFunc.wl_value(), d = objFunc.d_value(), overflow_ratio = objFunc.overflow_ratio();
+        printf("iter %6ld: f = %10.2e, lambda = %10.2e, wl = %10.2e (%3.1f%%), d = %10.2e (%3.1f%%), overflow_ratio = %3.2f\n",
+               i, f, objFunc.lambda(), wl, wl / f * 100, d, d * objFunc.lambda() / f * 100, overflow_ratio);
         optimizer.Step();
         for (size_t j = 0, end_j = num_modules; j < end_j; ++j) {
             Module &module = _placement.module(j);
@@ -69,6 +69,10 @@ void GlobalPlacer::place() {
                 }
             }
         }
+        if (i > 30 && prev_overflow_ratio < overflow_ratio) {
+            objFunc.scale_lambda(2);
+        }
+        prev_overflow_ratio = overflow_ratio;
     }
 
     ////////////////////////////////////////////////////////////////////

@@ -6,32 +6,8 @@
 
 using namespace std;
 
-ExampleFunction::ExampleFunction(Placement &placement) : BaseFunction(1), placement_(placement)
-{
-    printf("Fetch the information you need from placement database.\n");
-    printf("For example:\n");
-    printf("    Placement boundary: (%.f,%.f)-(%.f,%.f)\n", placement_.boundryLeft(), placement_.boundryBottom(),
-           placement_.boundryRight(), placement_.boundryTop());
-}
-
-const double &ExampleFunction::operator()(const std::vector<Point2<double>> &input)
-{
-    // Compute the value of the function
-    value_ = 3. * input[0].x * input[0].x + 2. * input[0].x * input[0].y +
-             2. * input[0].y * input[0].y + 7.;
-    input_ = input;
-    return value_;
-}
-
-const std::vector<Point2<double>> &ExampleFunction::Backward()
-{
-    // Compute the gradient of the function
-    grad_[0].x = 6. * input_[0].x + 2. * input_[0].y;
-    grad_[0].y = 2. * input_[0].x + 4. * input_[0].y;
-    return grad_;
-}
-
-WAWirelength::WAWirelength(Placement &placement) : BaseFunction(placement.numModules()), placement_(placement)
+WAWirelength::WAWirelength(Placement &placement, std::vector<Point2<double>> &input)
+    : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     gamma_ = max(placement_.boundryRight() - placement_.boundryLeft(),
                   placement_.boundryTop() - placement_.boundryBottom()) * 0.05;
@@ -52,7 +28,6 @@ WAWirelength::WAWirelength(Placement &placement) : BaseFunction(placement.numMod
 
 const double &WAWirelength::operator()(const std::vector<Point2<double>> &input) 
 {
-    input_ = input;
     value_ = 0.;
     for (size_t i = 0, end_i = placement_.numNets(); i < end_i; ++i) {
         Net &net = placement_.net(i);
@@ -157,11 +132,11 @@ const std::vector<Point2<double>> &WAWirelength::Backward()
     return grad_;
 }
 
-Density::Density(Placement &placement) : BaseFunction(placement.numModules()), placement_(placement)
+Density::Density(Placement &placement, std::vector<Point2<double>> &input)
+    : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     // initialize bins
-    num_bins_x_ = num_bins_y_ = 16;
-    // num_bins_x_ = num_bins_y_ = sqrt(placement_.numModules());
+    num_bins_x_ = num_bins_y_ = sqrt(placement_.numModules()) / 2;
     bin_width_ = (placement_.boundryRight() - placement_.boundryLeft()) / num_bins_x_;
     bin_height_ = (placement_.boundryTop() - placement_.boundryBottom()) / num_bins_y_;
     bin_area_ = bin_width_ * bin_height_;
@@ -197,6 +172,13 @@ Density::Density(Placement &placement) : BaseFunction(placement.numModules()), p
             }
         }
     }
+    total_moveable_area_ = 0.;
+    for (size_t i = 0, end_i = num_bins_y_; i < end_i; ++i) {
+        for (size_t j = 0, end_j = num_bins_x_; j < end_j; ++j) {
+            total_moveable_area_ += Mb_[i][j];
+        }
+    }
+    overflow_ratio_ = 0.;
 }
 
 static inline double bell_shaped(double dx, double wv, double wb, double a, double b)
@@ -215,16 +197,17 @@ static inline double d_bell_shaped(double dx, double wv, double wb, double a, do
     const double abs_dx = abs(dx);
     double dpx = 0;
     if (abs_dx <= wv * 0.5 + wb) {
-        dpx = (dx > 0) ? -2. * a * dx : 2. * a * dx;
+        // dpx = (dx > 0) ? -2. * a * dx : 2. * a * dx;
+        dpx = -2. * a * dx;
     } else if ((wv * 0.5 + wb) < abs_dx && abs_dx <= (wv * 0.5 + 2. * wb)) {
-        dpx = (dx > 0) ? 2. * b * (dx - wv * 0.5 - wb * 2.) : -2. * b * (dx - wv * 0.5 - wb * 2.);
+        // dpx = (dx > 0) ? 2. * b * (dx - wv * 0.5 - wb * 2.) : -2. * b * (dx - wv * 0.5 - wb * 2.);
+        dpx = (dx > 0) ? 2. * b * (dx - wv * 0.5 - wb * 2.) : 2. * b * (dx + wv * 0.5 + wb * 2.);
     }
     return dpx;
 }
 
 const double &Density::operator()(const std::vector<Point2<double>> &input)
 {
-    input_ = input;
     value_ = 0.;
     // reset density
     for (size_t i = 0, end_i = num_bins_y_; i < end_i; ++i) {
@@ -239,10 +222,10 @@ const double &Density::operator()(const std::vector<Point2<double>> &input)
         const double h_v= module.height();
         const double w_b = bin_width_;
         const double h_b = bin_height_;
-        const double lx = input[i].x;
-        const double rx = input[i].x + w_v;
-        const double by = input[i].y;
-        const double ty = input[i].y + h_v;
+        const double lx = input_[i].x;
+        const double rx = input_[i].x + w_v;
+        const double by = input_[i].y;
+        const double ty = input_[i].y + h_v;
         int bin_lc = (lx - placement_.boundryLeft()) / bin_width_;
         bin_lc = max(bin_lc - bin_range_, 0);
         int bin_rc = (rx - placement_.boundryLeft()) / bin_width_;
@@ -268,11 +251,14 @@ const double &Density::operator()(const std::vector<Point2<double>> &input)
             }
         }
     }
+    overflow_ratio_ = 0.;
     for (size_t i = 0, end_i = num_bins_y_; i < end_i; ++i) {
         for (size_t j = 0, end_j = num_bins_x_; j < end_j; ++j) {
             value_ += pow(Db_[i][j] - Mb_[i][j], 2);
+            overflow_ratio_ += max(Db_[i][j] - Mb_[i][j], 0.);
         }
     }
+    overflow_ratio_ /= total_moveable_area_;
     return value_;
 }
 
@@ -327,7 +313,8 @@ const std::vector<Point2<double>> &Density::Backward()
     return grad_;
 }
 
-ObjectiveFunction::ObjectiveFunction(Placement &placement) : BaseFunction(placement.numModules()), wirelength_(placement), density_(placement)
+ObjectiveFunction::ObjectiveFunction(Placement &placement, std::vector<Point2<double>> &input)
+    : BaseFunction(placement.numModules()), wirelength_(placement, input), density_(placement, input)
 {
     lambda_ = 0;
 }
