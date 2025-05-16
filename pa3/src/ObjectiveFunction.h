@@ -6,6 +6,7 @@
 
 #include "Placement.h"
 #include "Point.h"
+#include "Rectangle.h"
 
 /**
  * @brief Base class for objective functions
@@ -34,6 +35,8 @@ class BaseFunction {
 
     // Backward pass, compute the gradient of the function
     virtual const std::vector<Point2<double>> &Backward() = 0;
+
+    virtual double bin_width() const { return 0.; }
 
    protected:
     /////////////////////////////////
@@ -104,7 +107,7 @@ private:
     Placement &placement_;
     double gamma_;
 
-    std::vector<double> x_max_, y_max_;
+    std::vector<double> x_max_, y_max_, x_min_, y_min_;
     std::vector<double> x_max_sum_w_exp_, x_min_sum_w_exp_;
     std::vector<double> y_max_sum_w_exp_, y_min_sum_w_exp_;
     std::vector<double> x_max_sum_exp_, x_min_sum_exp_;
@@ -125,9 +128,21 @@ class Density : public BaseFunction {
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
 
+    double bin_width() const { return bin_width_; }
+
    private:
     std::vector<Point2<double>> input_;  // Cache the input for backward pass
     Placement &placement_;
+    size_t num_bins_x_;
+    size_t num_bins_y_;
+    double bin_width_;
+    double bin_height_;
+    double bin_area_;
+    double t_density_;
+    int bin_range_;
+    std::vector<std::vector<Rectangle>> bins_;
+    std::vector<std::vector<double>> Mb_, Db_;
+
 };
 
 /**
@@ -149,6 +164,14 @@ class ObjectiveFunction : public BaseFunction {
 
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
+
+    double bin_width() const { return density_.bin_width(); }
+    double lambda() const { return lambda_; }
+    double wl_value() const { return wirelength_.value(); }
+    double d_value() const { return density_.value(); }
+
+    void set_init_lambda();
+    inline void scale_lambda(double scale) { lambda_ *= scale; }
 
    private:
     WAWirelength wirelength_;

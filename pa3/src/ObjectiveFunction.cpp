@@ -2,6 +2,7 @@
 
 #include "cstdio"
 #include "cmath"
+#include "Rectangle.h"
 
 using namespace std;
 
@@ -32,10 +33,12 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
 
 WAWirelength::WAWirelength(Placement &placement) : BaseFunction(placement.numModules()), placement_(placement)
 {
-    gamma_ = (placement_.boundryRight() - placement_.boundryLeft()) * 0.01;
+    gamma_ = (placement_.boundryRight() - placement_.boundryLeft()) * 0.05;
     const size_t num_nets = placement_.numNets();
     x_max_.resize(num_nets);
     y_max_.resize(num_nets);
+    x_min_.resize(num_nets);
+    y_min_.resize(num_nets);
     x_max_sum_w_exp_.resize(num_nets);
     x_min_sum_w_exp_.resize(num_nets);
     y_max_sum_w_exp_.resize(num_nets);
@@ -55,16 +58,21 @@ const double &WAWirelength::operator()(const std::vector<Point2<double>> &input)
 
         // maximum and minimum x and y
         double x_max = placement_.boundryLeft();
+        double x_min = placement_.boundryRight();
         double y_max = placement_.boundryBottom();
+        double y_min = placement_.boundryTop();
         for (size_t j = 0, end_j = net.numPins(); j < end_j; ++j) {
-            Pin &pin = net.pin(j);
-            Point2<double> &module_pos = input_[pin.moduleId()];
-            x_max = max(x_max, module_pos.x + pin.xOffset());
-            y_max = max(y_max, module_pos.y + pin.yOffset());
+            Point2<double> module_pos = input_[net.pin(j).moduleId()];
+            x_max = max(x_max, module_pos.x);
+            x_min = min(x_min, module_pos.x);
+            y_max = max(y_max, module_pos.y);
+            y_min = min(y_min, module_pos.y);
         }
         // cache
         x_max_[i] = x_max;
+        x_min_[i] = x_min;
         y_max_[i] = y_max;
+        y_min_[i] = y_min;
 
         // sum of exponential
         double x_max_sum_w_exp = 0., x_max_sum_exp = 0.;
@@ -72,14 +80,13 @@ const double &WAWirelength::operator()(const std::vector<Point2<double>> &input)
         double y_max_sum_w_exp = 0., y_max_sum_exp = 0.;
         double y_min_sum_w_exp = 0., y_min_sum_exp = 0.;
         for (size_t j = 0, end_j = net.numPins(); j < end_j; ++j) {
-            Pin &pin = net.pin(j);
-            Point2<double> &module_pos = input_[pin.moduleId()];
-            const double x = module_pos.x + pin.xOffset();
-            const double y = module_pos.y + pin.yOffset();
+            Point2<double> &module_pos = input_[net.pin(j).moduleId()];
+            const double x = module_pos.x;
+            const double y = module_pos.y;
             const double exp_x_max = exp((x - x_max) / gamma_);
-            const double exp_x_min = exp((x_max - x) / gamma_);
+            const double exp_x_min = exp((x_min - x) / gamma_);
             const double exp_y_max = exp((y - y_max) / gamma_);
-            const double exp_y_min = exp((y_max - y) / gamma_);
+            const double exp_y_min = exp((y_min - y) / gamma_);
             x_max_sum_w_exp += exp_x_max * x;
             x_min_sum_w_exp += exp_x_min * x;
             y_max_sum_w_exp += exp_y_max * y;
@@ -117,7 +124,9 @@ const std::vector<Point2<double>> &WAWirelength::Backward()
     for (size_t i = 0, end_i = placement_.numNets(); i < end_i; ++i) {
         Net &net = placement_.net(i);
         const double x_max = x_max_[i];
+        const double x_min = x_min_[i];
         const double y_max = y_max_[i];
+        const double y_min = y_min_[i];
         const double x_max_sum_w_exp = x_max_sum_w_exp_[i];
         const double x_min_sum_w_exp = x_min_sum_w_exp_[i];
         const double y_max_sum_w_exp = y_max_sum_w_exp_[i];
@@ -128,19 +137,18 @@ const std::vector<Point2<double>> &WAWirelength::Backward()
         const double y_min_sum_exp = y_min_sum_exp_[i];
 
         for (size_t j = 0, end_j = net.numPins(); j < end_j; ++j) {
-            Pin &pin = net.pin(j);
-            Point2<double> &module_pos = input_[pin.moduleId()];
-            const double x = module_pos.x + pin.xOffset();
-            const double y = module_pos.y + pin.yOffset();
+            Point2<double> &module_pos = input_[net.pin(j).moduleId()];
+            const double x = module_pos.x;
+            const double y = module_pos.y;
             const double exp_x_max = exp((x - x_max) / gamma_);
-            const double exp_x_min = exp((x_max - x) / gamma_);
+            const double exp_x_min = exp((x_min - x) / gamma_);
             const double exp_y_max = exp((y - y_max) / gamma_);
-            const double exp_y_min = exp((y_max - y) / gamma_);
+            const double exp_y_min = exp((y_min - y) / gamma_);
             const double grad_x_max = ((1 + x / gamma_) * exp_x_max * x_max_sum_exp - x_max_sum_w_exp / gamma_ * exp_x_max) / x_max_sum_exp / x_max_sum_exp;
             const double grad_x_min = ((1 - x / gamma_) * exp_x_min * x_min_sum_exp + x_min_sum_w_exp / gamma_ * exp_x_min) / x_min_sum_exp / x_min_sum_exp;
             const double grad_y_max = ((1 + y / gamma_) * exp_y_max * y_max_sum_exp - y_max_sum_w_exp / gamma_ * exp_y_max) / y_max_sum_exp / y_max_sum_exp;
             const double grad_y_min = ((1 - y / gamma_) * exp_y_min * y_min_sum_exp + y_min_sum_w_exp / gamma_ * exp_y_min) / y_min_sum_exp / y_min_sum_exp;
-            auto &grad = grad_[pin.moduleId()];
+            auto &grad = grad_[net.pin(j).moduleId()];
             grad.x += grad_x_max - grad_x_min;
             grad.y += grad_y_max - grad_y_min;
         }
@@ -150,30 +158,181 @@ const std::vector<Point2<double>> &WAWirelength::Backward()
 
 Density::Density(Placement &placement) : BaseFunction(placement.numModules()), placement_(placement)
 {
+    // initialize bins
+    num_bins_x_ = num_bins_y_ = 16;
+    // num_bins_x_ = num_bins_y_ = sqrt(placement_.numModules());
+    bin_width_ = (placement_.boundryRight() - placement_.boundryLeft()) / num_bins_x_;
+    bin_height_ = (placement_.boundryTop() - placement_.boundryBottom()) / num_bins_y_;
+    bin_area_ = bin_width_ * bin_height_;
+    bin_range_ = 2;
+    t_density_ = 0.9;
+    Mb_.resize(num_bins_y_, std::vector<double>(num_bins_x_, t_density_));
+    Db_.resize(num_bins_y_, std::vector<double>(num_bins_x_, 0.));
+    double bin_x = placement_.boundryLeft();
+    double bin_y = placement_.boundryBottom();
+    for (size_t i = 0; i < num_bins_y_; ++i) {
+        std::vector<Rectangle> bin_row;
+        for (size_t j = 0; j < num_bins_x_; ++j) {
+            bin_row.emplace_back(bin_x, bin_y, bin_x + bin_width_, bin_y + bin_height_);
+            bin_x += bin_width_;
+        }
+        bins_.emplace_back(bin_row);
+        bin_x = placement_.boundryLeft();
+        bin_y += bin_height_;
+    }
+    // calculate Mb_: overlap area of each bin and fixed modules
+    for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
+        Module &module = placement_.module(i);
+        if (module.isFixed()) {
+            Rectangle module_rect = module.rectangle();
+            const double x_min = module_rect.left();
+            const double y_min = module_rect.bottom();
+            const double x_max = module_rect.right();
+            const double y_max = module_rect.top();
+            int bin_x_min = (x_min - placement_.boundryLeft()) / bin_width_;
+            bin_x_min = max(bin_x_min, 0);
+            int bin_y_min = (y_min - placement_.boundryBottom()) / bin_height_;
+            bin_y_min = max(bin_y_min, 0);
+            int bin_x_max = (x_max - placement_.boundryLeft()) / bin_width_;
+            bin_x_max = min(bin_x_max, int(num_bins_x_ - 1));
+            int bin_y_max = (y_max - placement_.boundryBottom()) / bin_height_;
+            bin_y_max = min(bin_y_max, int(num_bins_y_ - 1));
+            for (int j = bin_x_min; j <= bin_x_max; ++j) {
+                for (int k = bin_y_min; k <= bin_y_max; ++k) {
+                    Mb_[j][k] -= Rectangle::overlapArea(bins_[j][k], module_rect) / bin_area_;
+                }
+            }
+        }
+    }
+}
+
+static inline double bell_shaped(double dx, double wv, double wb, double a, double b)
+{
+    double px = 0;
+    if (dx <= wv * 0.5 + wb) {
+        px = 1. - a * dx * dx;
+    } else if ((wv * 0.5 + wb) < dx && dx <= (wv * 0.5 + 2. * wb)) {
+        px = b * pow(dx - wv * 0.5 - wb * 2., 2);
+    }
+    return px;
+}
+
+static inline double d_bell_shaped(double dx, double wv, double wb, double a, double b)
+{
+    const double abs_dx = abs(dx);
+    double dpx = 0;
+    if (abs_dx <= wv * 0.5 + wb) {
+        dpx = (dx > 0) ? -2. * a * dx : 2. * a * dx;
+    } else if ((wv * 0.5 + wb) < abs_dx && abs_dx <= (wv * 0.5 + 2. * wb)) {
+        dpx = (dx > 0) ? 2. * b * (dx - wv * 0.5 - wb * 2.) : -2. * b * (dx - wv * 0.5 - wb * 2.);
+    }
+    return dpx;
 }
 
 const double &Density::operator()(const std::vector<Point2<double>> &input)
 {
     input_ = input;
     value_ = 0.;
-    // TODO: Implement the density function
+    // reset density
+    for (size_t i = 0, end_i = num_bins_y_; i < end_i; ++i) {
+        for (size_t j = 0, end_j = num_bins_x_; j < end_j; ++j) {
+            Db_[i][j] = 0.;
+        }
+    }
+    // calculate density
+    for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
+        Module &module = placement_.module(i);
+        const double w_v = module.width();
+        const double h_v= module.height();
+        const double w_b = bin_width_;
+        const double h_b = bin_height_;
+        const double lx = input[i].x;
+        const double rx = input[i].x + w_v;
+        const double by = input[i].y;
+        const double ty = input[i].y + h_v;
+        int bin_lc = (lx - placement_.boundryLeft()) / bin_width_;
+        bin_lc = max(bin_lc - bin_range_, 0);
+        int bin_rc = (rx - placement_.boundryLeft()) / bin_width_;
+        bin_rc = min(bin_rc + bin_range_, int(num_bins_x_ - 1));
+        int bin_bc = (by - placement_.boundryBottom()) / bin_height_;
+        bin_bc = max(bin_bc - bin_range_, 0);
+        int bin_tc = (ty - placement_.boundryBottom()) / bin_height_;
+        bin_tc = min(bin_tc + bin_range_, int(num_bins_y_ - 1));
+        // bell-shaped
+        const double a_x = 4. / (w_v + 2. * w_b) / (w_v + 4. * w_b);
+        const double a_y = 4. / (h_v + 2. * h_b) / (h_v + 4. * h_b);
+        const double b_x = 2. / w_b / (w_v + 4. * w_b);
+        const double b_y = 2. / h_b / (h_v + 4. * h_b);
+        for (int j = bin_lc; j <= bin_rc; ++j) {
+            for (int k = bin_bc; k <= bin_tc; ++k) {
+                const double dx = abs(bins_[j][k].centerX() - (lx + w_v / 2.));
+                const double px = bell_shaped(dx, w_v, w_b, a_x, b_x);
+                const double dy = abs(bins_[j][k].centerY() - (by + h_v / 2.));
+                const double py = bell_shaped(dy, h_v, h_b, a_y, b_y);
+                Db_[j][k] += px * py;
+            }
+        }
+    }
+    for (size_t i = 0, end_i = num_bins_y_; i < end_i; ++i) {
+        for (size_t j = 0, end_j = num_bins_x_; j < end_j; ++j) {
+            value_ += pow(Db_[i][j] - Mb_[i][j], 2);
+        }
+    }
     return value_;
 }
 
 const std::vector<Point2<double>> &Density::Backward()
 {
-    // TODO: Implement the backward pass of the density function
     // reset gradient
     for (auto &grad : grad_) {
         grad.x = 0.;
         grad.y = 0.;
+    }
+    // calculate gradient
+    for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
+        Module &module = placement_.module(i);
+        const double w_v = module.width();
+        const double h_v= module.height();
+        const double w_b = bin_width_;
+        const double h_b = bin_height_;
+        const double lx = input_[i].x;
+        const double rx = input_[i].x + w_v;
+        const double by = input_[i].y;
+        const double ty = input_[i].y + h_v;
+        int bin_lc = (lx - placement_.boundryLeft()) / bin_width_;
+        bin_lc = max(bin_lc - bin_range_, 0);
+        int bin_rc = (rx - placement_.boundryLeft()) / bin_width_;
+        bin_rc = min(bin_rc + bin_range_, int(num_bins_x_ - 1));
+        int bin_bc = (by - placement_.boundryBottom()) / bin_height_;
+        bin_bc = max(bin_bc - bin_range_, 0);
+        int bin_tc = (ty - placement_.boundryBottom()) / bin_height_;
+        bin_tc = min(bin_tc + bin_range_, int(num_bins_y_ - 1));
+        // bell-shaped
+        const double a_x = 4. / (w_v + 2. * w_b) / (w_v + 4. * w_b);
+        const double a_y = 4. / (h_v + 2. * h_b) / (h_v + 4. * h_b);
+        const double b_x = 2. / w_b / (w_v + 4. * w_b);
+        const double b_y = 2. / h_b / (h_v + 4. * h_b);
+        for (int j = bin_lc; j <= bin_rc; ++j) {
+            for (int k = bin_bc; k <= bin_tc; ++k) {
+                const double dx = (lx + w_v / 2.) - bins_[j][k].centerX();
+                const double px = bell_shaped(abs(dx), w_v, w_b, a_x, b_x);
+                const double dpx_dx = d_bell_shaped(dx, w_v, w_b, a_x, b_x);
+                const double dy = (by + h_v / 2.) - bins_[j][k].centerY();
+                const double py = bell_shaped(abs(dy), h_v, h_b, a_y, b_y);
+                const double dpy_dy = d_bell_shaped(dy, h_v, h_b, a_y, b_y);
+                auto &grad = grad_[i];
+                const double db_mb = 2. * (Db_[j][k] - Mb_[j][k]);
+                grad.x += db_mb * py * dpx_dx;
+                grad.y += db_mb * px * dpy_dy;
+            }
+        }
     }
     return grad_;
 }
 
 ObjectiveFunction::ObjectiveFunction(Placement &placement) : BaseFunction(placement.numModules()), wirelength_(placement), density_(placement)
 {
-    lambda_ = 0.1;
+    lambda_ = 0;
 }
 
 const double &ObjectiveFunction::operator()(const std::vector<Point2<double>> &input)
@@ -192,4 +351,10 @@ const std::vector<Point2<double>> &ObjectiveFunction::Backward()
     return grad_;
 }
 
-
+void ObjectiveFunction::set_init_lambda()
+{
+    double sum_wl_grad = 0., sum_d_grad = 0.;
+    for (auto &grad : wirelength_.grad()) { sum_wl_grad += Norm2(grad); }
+    for (auto &grad : density_.grad()) { sum_d_grad += Norm2(grad); }
+    lambda_ = sum_wl_grad / sum_d_grad;
+}

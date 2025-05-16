@@ -54,11 +54,14 @@ void SimpleConjugateGradient::Step() {
 
     // Assume the step size is constant
     // TODO(Optional): Change to dynamic step-size control
+    const double step_scale = 0.5;
+    const double bin_width = obj_.bin_width();
+    const double swb = step_scale * bin_width;
 
     // Update the solution
     // Please be aware of the updating directions, i.e., the sign for each term.
     for (size_t i = 0; i < kNumModule; ++i) {
-        var_[i] = var_[i] + alpha_ * dir[i];
+        var_[i] = var_[i] + (swb / Norm2(dir[i])) * dir[i];
     }
 
     // Update the cache data members

@@ -40,3 +40,7 @@ out
 *.pdf
 viz
 sample_codes
+pa3/src/GlobalPlacer.cpp
+plots
+*.pl
+*.plt

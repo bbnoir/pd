@@ -43,15 +43,30 @@ void GlobalPlacer::place() {
     SimpleConjugateGradient optimizer(objFunc, positions, kAlpha);
     optimizer.Initialize();
     for (size_t i = 0, end_i = 1000; i < end_i; ++i) {
-        cout << "iter = " << i << ", f = " << objFunc(positions) << "\n";
+        if (i == 30) { objFunc.set_init_lambda(); }
+        if (i % 20 == 0) { objFunc.scale_lambda(2); }
+        double f = objFunc(positions), wl = objFunc.wl_value(), d = objFunc.d_value();
+        printf("iter %6ld: f = %10.2e, lambda = %10.2e, wl = %10.2e (%3.1f%%), d = %10.2e (%3.1f%%)\n", 
+               i, f, objFunc.lambda(), wl, wl / f * 100, d, d * objFunc.lambda() / f * 100);
         optimizer.Step();
         for (size_t j = 0, end_j = num_modules; j < end_j; ++j) {
             Module &module = _placement.module(j);
             if (module.isFixed()) {
+                // set back pos of fixed modules
                 positions[j].x = module.x();
                 positions[j].y = module.y();
-            // } else {
-            //     module.setPosition(positions[j].x, positions[j].y);
+            } else {
+                // check if the module is out of the bounding box
+                if (positions[j].x < _placement.boundryLeft()) {
+                    positions[j].x = _placement.boundryLeft();
+                } else if (positions[j].x + module.width() > _placement.boundryRight()) {
+                    positions[j].x = _placement.boundryRight() - module.width();
+                }
+                if (positions[j].y < _placement.boundryBottom()) {
+                    positions[j].y = _placement.boundryBottom();
+                } else if (positions[j].y + module.height() > _placement.boundryTop()) {
+                    positions[j].y = _placement.boundryTop() - module.height();
+                }
             }
         }
     }
