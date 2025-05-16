@@ -140,7 +140,6 @@ class Density : public BaseFunction {
     double bin_area_;
     double t_density_;
     int bin_range_;
-    std::vector<std::vector<Rectangle>> bins_;
     std::vector<std::vector<double>> Mb_, Db_;
 
 };

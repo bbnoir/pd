@@ -33,7 +33,8 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
 
 WAWirelength::WAWirelength(Placement &placement) : BaseFunction(placement.numModules()), placement_(placement)
 {
-    gamma_ = (placement_.boundryRight() - placement_.boundryLeft()) * 0.05;
+    gamma_ = max(placement_.boundryRight() - placement_.boundryLeft(),
+                  placement_.boundryTop() - placement_.boundryBottom()) * 0.05;
     const size_t num_nets = placement_.numNets();
     x_max_.resize(num_nets);
     y_max_.resize(num_nets);
@@ -164,22 +165,12 @@ Density::Density(Placement &placement) : BaseFunction(placement.numModules()), p
     bin_width_ = (placement_.boundryRight() - placement_.boundryLeft()) / num_bins_x_;
     bin_height_ = (placement_.boundryTop() - placement_.boundryBottom()) / num_bins_y_;
     bin_area_ = bin_width_ * bin_height_;
-    bin_range_ = 2;
+    bin_range_ = 3;
     t_density_ = 0.9;
-    Mb_.resize(num_bins_y_, std::vector<double>(num_bins_x_, t_density_));
-    Db_.resize(num_bins_y_, std::vector<double>(num_bins_x_, 0.));
+    Mb_.resize(num_bins_y_, vector<double>(num_bins_x_, t_density_));
+    Db_.resize(num_bins_y_, vector<double>(num_bins_x_, 0.));
     double bin_x = placement_.boundryLeft();
     double bin_y = placement_.boundryBottom();
-    for (size_t i = 0; i < num_bins_y_; ++i) {
-        std::vector<Rectangle> bin_row;
-        for (size_t j = 0; j < num_bins_x_; ++j) {
-            bin_row.emplace_back(bin_x, bin_y, bin_x + bin_width_, bin_y + bin_height_);
-            bin_x += bin_width_;
-        }
-        bins_.emplace_back(bin_row);
-        bin_x = placement_.boundryLeft();
-        bin_y += bin_height_;
-    }
     // calculate Mb_: overlap area of each bin and fixed modules
     for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
         Module &module = placement_.module(i);
@@ -199,7 +190,9 @@ Density::Density(Placement &placement) : BaseFunction(placement.numModules()), p
             bin_y_max = min(bin_y_max, int(num_bins_y_ - 1));
             for (int j = bin_x_min; j <= bin_x_max; ++j) {
                 for (int k = bin_y_min; k <= bin_y_max; ++k) {
-                    Mb_[j][k] -= Rectangle::overlapArea(bins_[j][k], module_rect) / bin_area_;
+                    const Rectangle bin_rect = Rectangle(bin_x + j * bin_width_, bin_y + k * bin_height_,
+                                                bin_x + (j + 1) * bin_width_, bin_y + (k + 1) * bin_height_);
+                    Mb_[j][k] -= Rectangle::overlapArea(bin_rect, module_rect) / bin_area_;
                 }
             }
         }
@@ -265,9 +258,11 @@ const double &Density::operator()(const std::vector<Point2<double>> &input)
         const double b_y = 2. / h_b / (h_v + 4. * h_b);
         for (int j = bin_lc; j <= bin_rc; ++j) {
             for (int k = bin_bc; k <= bin_tc; ++k) {
-                const double dx = abs(bins_[j][k].centerX() - (lx + w_v / 2.));
+                const double bin_center_x = placement_.boundryLeft() + j * bin_width_ + bin_width_ / 2.;
+                const double dx = abs(bin_center_x - (lx + w_v / 2.));
                 const double px = bell_shaped(dx, w_v, w_b, a_x, b_x);
-                const double dy = abs(bins_[j][k].centerY() - (by + h_v / 2.));
+                const double bin_center_y = placement_.boundryBottom() + k * bin_height_ + bin_height_ / 2.;
+                const double dy = abs(bin_center_y - (by + h_v / 2.));
                 const double py = bell_shaped(dy, h_v, h_b, a_y, b_y);
                 Db_[j][k] += px * py;
             }
@@ -314,10 +309,12 @@ const std::vector<Point2<double>> &Density::Backward()
         const double b_y = 2. / h_b / (h_v + 4. * h_b);
         for (int j = bin_lc; j <= bin_rc; ++j) {
             for (int k = bin_bc; k <= bin_tc; ++k) {
-                const double dx = (lx + w_v / 2.) - bins_[j][k].centerX();
+                const double bin_center_x = placement_.boundryLeft() + j * bin_width_ + bin_width_ / 2.;
+                const double dx = (lx + w_v / 2.) - bin_center_x;
                 const double px = bell_shaped(abs(dx), w_v, w_b, a_x, b_x);
                 const double dpx_dx = d_bell_shaped(dx, w_v, w_b, a_x, b_x);
-                const double dy = (by + h_v / 2.) - bins_[j][k].centerY();
+                const double bin_center_y = placement_.boundryBottom() + k * bin_height_ + bin_height_ / 2.;
+                const double dy = (by + h_v / 2.) - bin_center_y;
                 const double py = bell_shaped(abs(dy), h_v, h_b, a_y, b_y);
                 const double dpy_dy = d_bell_shaped(dy, h_v, h_b, a_y, b_y);
                 auto &grad = grad_[i];
