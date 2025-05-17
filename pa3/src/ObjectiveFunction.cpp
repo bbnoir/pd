@@ -10,7 +10,7 @@ WAWirelength::WAWirelength(Placement &placement, std::vector<Point2<double>> &in
     : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     gamma_ = max(placement_.boundryRight() - placement_.boundryLeft(),
-                  placement_.boundryTop() - placement_.boundryBottom()) * 0.5;
+                  placement_.boundryTop() - placement_.boundryBottom()) / 10.;
     const size_t num_nets = placement_.numNets();
     x_max_.resize(num_nets);
     y_max_.resize(num_nets);
@@ -136,20 +136,30 @@ Density::Density(Placement &placement, std::vector<Point2<double>> &input)
     : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     // initialize bins
-    const int module_sqrt = sqrt(placement_.numModules());
-    const int grid_num = module_sqrt / 2;
-    bin_width_ = bin_height_ = min(placement_.boundryRight() - placement_.boundryLeft(),
-                            placement_.boundryTop() - placement_.boundryBottom()) / grid_num;
-    num_bins_x_ = (placement_.boundryRight() - placement_.boundryLeft()) / bin_width_;
-    num_bins_y_ = (placement_.boundryTop() - placement_.boundryBottom()) / bin_height_;
-    bin_area_ = bin_width_ * bin_height_;
     bin_range_ = 2;
     t_density_ = 0.9;
-    Mb_.resize(num_bins_y_, vector<double>(num_bins_x_, t_density_));
+    const int grid_num = 8;
+    this->resize_bin(grid_num);
+    total_moveable_area_ = 0.;
+    for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
+        Module &module = placement_.module(i);
+        if (!module.isFixed()) {
+            total_moveable_area_ += module.width() * module.height();
+        }
+    }
+}
+
+void Density::resize_bin(int grid_num)
+{
+    overflow_ratio_ = 0.;
+    num_bins_x_ = num_bins_y_ = grid_num;
+    bin_width_ = (placement_.boundryRight() - placement_.boundryLeft()) / grid_num;
+    bin_height_ = (placement_.boundryTop() - placement_.boundryBottom()) / grid_num;
+    bin_area_ = bin_width_ * bin_height_;
+    Mb_.clear();
+    Db_.clear();
+    Mb_.resize(num_bins_y_, vector<double>(num_bins_x_, bin_area_));
     Db_.resize(num_bins_y_, vector<double>(num_bins_x_, 0.));
-    double bin_x = placement_.boundryLeft();
-    double bin_y = placement_.boundryBottom();
-    // calculate Mb_: overlap area of each bin and fixed modules
     for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
         Module &module = placement_.module(i);
         if (module.isFixed()) {
@@ -168,20 +178,20 @@ Density::Density(Placement &placement, std::vector<Point2<double>> &input)
             bin_y_max = min(bin_y_max, int(num_bins_y_ - 1));
             for (int j = bin_x_min; j <= bin_x_max; ++j) {
                 for (int k = bin_y_min; k <= bin_y_max; ++k) {
-                    const Rectangle bin_rect = Rectangle(bin_x + j * bin_width_, bin_y + k * bin_height_,
-                                                bin_x + (j + 1) * bin_width_, bin_y + (k + 1) * bin_height_);
-                    Mb_[j][k] -= Rectangle::overlapArea(bin_rect, module_rect) / bin_area_;
+                    const Rectangle bin_rect = Rectangle(placement_.boundryLeft() + j * bin_width_,
+                                                placement_.boundryBottom() + k * bin_height_,
+                                                placement_.boundryLeft() + (j + 1) * bin_width_,
+                                                placement_.boundryBottom() + (k + 1) * bin_height_);
+                    Mb_[j][k] -= Rectangle::overlapArea(bin_rect, module_rect);
                 }
             }
         }
     }
-    total_moveable_area_ = 0.;
     for (size_t i = 0, end_i = num_bins_y_; i < end_i; ++i) {
         for (size_t j = 0, end_j = num_bins_x_; j < end_j; ++j) {
-            total_moveable_area_ += Mb_[i][j];
+            Mb_[i][j] *= t_density_;
         }
     }
-    overflow_ratio_ = 0.;
 }
 
 static inline double bell_shaped(double dx, double wv, double wb, double a, double b)
@@ -216,6 +226,7 @@ const double &Density::operator()(const std::vector<Point2<double>> &input)
             Db_[i][j] = 0.;
         }
     }
+    vector<vector<double>> tempDb(num_bins_y_, vector<double>(num_bins_x_, 0.));
     // calculate density
     for (size_t i = 0, end_i = placement_.numModules(); i < end_i; ++i) {
         Module &module = placement_.module(i);
@@ -240,6 +251,7 @@ const double &Density::operator()(const std::vector<Point2<double>> &input)
         const double a_y = 4. / (h_v + 2. * h_b) / (h_v + 4. * h_b);
         const double b_x = 2. / w_b / (w_v + 4. * w_b);
         const double b_y = 2. / h_b / (h_v + 4. * h_b);
+        double total_potential = 0.;
         for (int j = bin_lc; j <= bin_rc; ++j) {
             for (int k = bin_bc; k <= bin_tc; ++k) {
                 const double bin_center_x = placement_.boundryLeft() + j * bin_width_ + bin_width_ / 2.;
@@ -248,7 +260,15 @@ const double &Density::operator()(const std::vector<Point2<double>> &input)
                 const double bin_center_y = placement_.boundryBottom() + k * bin_height_ + bin_height_ / 2.;
                 const double dy = abs(bin_center_y - (by + h_v / 2.));
                 const double py = bell_shaped(dy, h_v, h_b, a_y, b_y);
-                Db_[j][k] += px * py;
+                total_potential += px * py;
+                tempDb[j][k] = px * py;
+            }
+        }
+        // normalize
+        const double module_area = w_v * h_v;
+        for (int j = bin_lc; j <= bin_rc; ++j) {
+            for (int k = bin_bc; k <= bin_tc; ++k) {
+                Db_[j][k] += tempDb[j][k] / total_potential * module_area;
             }
         }
     }

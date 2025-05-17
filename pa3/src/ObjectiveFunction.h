@@ -78,6 +78,8 @@ class Density : public BaseFunction {
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
 
+    void resize_bin(int grid_num);
+
     double bin_width() const { return bin_width_; }
     double overflow_ratio() const { return overflow_ratio_; }
 
@@ -117,6 +119,7 @@ class ObjectiveFunction : public BaseFunction {
     const double &operator()(const std::vector<Point2<double>> &input) override;
     const std::vector<Point2<double>> &Backward() override;
 
+    void resize_bin(int grid_num) { density_.resize_bin(grid_num); }
     double bin_width() const { return density_.bin_width(); }
     double overflow_ratio() const { return density_.overflow_ratio(); } 
     double lambda() const { return lambda_; }
@@ -125,6 +128,7 @@ class ObjectiveFunction : public BaseFunction {
 
     void set_init_lambda();
     inline void scale_lambda(double scale) { lambda_ *= scale; }
+    inline void set_lambda(double lambda) { lambda_ = lambda; }
 
    private:
     WAWirelength wirelength_;

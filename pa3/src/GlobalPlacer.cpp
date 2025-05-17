@@ -14,6 +14,39 @@ GlobalPlacer::GlobalPlacer(Placement &placement)
     : _placement(placement) {
 }
 
+static void revert_illegal(vector<Point2<double>> &positions, Placement &placement, double bin_width) {
+    // clamp positions
+    const double half_bin_width = bin_width * 0.5;
+    const double left = placement.boundryLeft() + half_bin_width;
+    const double right = placement.boundryRight() - half_bin_width;
+    const double bottom = placement.boundryBottom() + half_bin_width;
+    const double top = placement.boundryTop() - half_bin_width;
+    for (size_t i = 0, end_i = positions.size(); i < end_i; ++i) {
+        Module &module = placement.module(i);
+        if (module.isFixed()) {
+            continue;
+        }
+        if (positions[i].x < left) {
+            positions[i].x = left;
+        } else if (positions[i].x + module.width() > right) {
+            positions[i].x = right - module.width();
+        }
+        if (positions[i].y < bottom) {
+            positions[i].y = bottom;
+        } else if (positions[i].y + module.height() > top) {
+            positions[i].y = top - module.height();
+        }
+    }
+    // revert fixed modules
+    for (size_t i = 0, end_i = positions.size(); i < end_i; ++i) {
+        Module &module = placement.module(i);
+        if (module.isFixed()) {
+            positions[i].x = module.x();
+            positions[i].y = module.y();
+        }
+    }
+}
+
 void GlobalPlacer::place() {
     ////////////////////////////////////////////////////////////////////
     // Global placement algorithm
@@ -40,49 +73,92 @@ void GlobalPlacer::place() {
         }
     }
 
-    const double kAlpha = 0.5;
+    const double kAlpha = 0.1;
     ObjectiveFunction objFunc(_placement, positions);
     SimpleConjugateGradient optimizer(objFunc, positions, kAlpha);
     optimizer.Initialize();
-    double prev_overflow_ratio = 1;
-    int overflow_stop_cnt = 0;
-    for (size_t i = 0, end_i = 1000; i < end_i; ++i) {
-        if (i == 100) { objFunc.set_init_lambda(); }
-        double f = objFunc(positions), wl = objFunc.wl_value(), d = objFunc.d_value(), overflow_ratio = objFunc.overflow_ratio();
-        printf("iter %6ld: f = %10.2e, alpha = %10.2e, lambda = %10.2e, wl = %10.2e (%3.1f%%), d = %10.2e (%3.1f%%), overflow_ratio = %3.2f\n",
-               i, f, optimizer.alpha(), objFunc.lambda(), wl, wl / f * 100, d, d * objFunc.lambda() / f * 100, overflow_ratio);
+    double bin_width = objFunc.bin_width();
+
+    // optimize wirelength
+    int wl_iter = 0;
+    double best_wl = objFunc(positions); // initial lambda = 0
+    int wl_stop_cnt = 0;
+    const int max_wl_stop_cnt = 3;
+    while (wl_iter < 100 && wl_stop_cnt < max_wl_stop_cnt) {
+        ++wl_iter;
         optimizer.Step();
-        for (size_t j = 0, end_j = num_modules; j < end_j; ++j) {
-            Module &module = _placement.module(j);
-            if (module.isFixed()) {
-                // set back pos of fixed modules
-                positions[j].x = module.x();
-                positions[j].y = module.y();
-            } else {
-                // check if the module is out of the bounding box
-                const double half_bin_width = objFunc.bin_width() * 0.5;
-                if (positions[j].x < _placement.boundryLeft()) {
-                    positions[j].x = _placement.boundryLeft() + half_bin_width;
-                } else if (positions[j].x + module.width() > _placement.boundryRight()) {
-                    positions[j].x = _placement.boundryRight() - module.width() - half_bin_width;
-                }
-                if (positions[j].y < _placement.boundryBottom()) {
-                    positions[j].y = _placement.boundryBottom() + half_bin_width;
-                } else if (positions[j].y + module.height() > _placement.boundryTop()) {
-                    positions[j].y = _placement.boundryTop() - module.height() - half_bin_width;
-                }
-            }
+        revert_illegal(positions, _placement, bin_width);
+        double wl = objFunc(positions);
+        printf("wl_iter %3d: wl = %10.2e, best_wl = %10.2e\n",
+               wl_iter, wl, best_wl);
+        // if (wl - best_wl >= -1e2) {
+        //     ++wl_stop_cnt;
+        // } else {
+        //     best_wl = wl;
+        //     wl_stop_cnt = 0;
+        // }
+    }
+
+    int d_iter = 0;
+    objFunc.set_init_lambda();
+    objFunc(positions);
+    double prev_overflow_ratio = objFunc.overflow_ratio();
+    printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
+           objFunc.lambda(), prev_overflow_ratio);
+    while (d_iter < 300) {
+        ++d_iter;
+        optimizer.Step();
+        revert_illegal(positions, _placement, bin_width);
+        const double f = objFunc(positions);
+        const double overflow_ratio = objFunc.overflow_ratio();
+        printf("8 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
+                d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
+        if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
+            break;
         }
-        if (prev_overflow_ratio - overflow_ratio < 0.01) {
-            ++overflow_stop_cnt;
-        } else {
-            overflow_stop_cnt = 0;
+        prev_overflow_ratio = overflow_ratio;
+    }
+
+    d_iter = 0;
+    objFunc.resize_bin(16);
+    objFunc.set_init_lambda();
+    objFunc(positions);
+    prev_overflow_ratio = objFunc.overflow_ratio();
+    bin_width = objFunc.bin_width();
+    printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
+           objFunc.lambda(), prev_overflow_ratio);
+    while (d_iter < 300) {
+        ++d_iter;
+        optimizer.Step();
+        revert_illegal(positions, _placement, bin_width);
+        const double f = objFunc(positions);
+        const double overflow_ratio = objFunc.overflow_ratio();
+        printf("16 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
+                d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
+        if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
+            break;
         }
-        if (d * objFunc.lambda() / f > 0.8) {
-            objFunc.scale_lambda(0.1);
-        }
-        if (i > 30 && overflow_stop_cnt > 1) {
-            objFunc.scale_lambda(2);
+        prev_overflow_ratio = overflow_ratio;
+    }
+
+    d_iter = 0;
+    objFunc.resize_bin(32);
+    objFunc.set_init_lambda();
+    objFunc(positions);
+    prev_overflow_ratio = objFunc.overflow_ratio();
+    bin_width = objFunc.bin_width();
+    printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
+           objFunc.lambda(), prev_overflow_ratio);
+    while (d_iter < 300) {
+        ++d_iter;
+        optimizer.Step();
+        revert_illegal(positions, _placement, bin_width);
+        const double f = objFunc(positions);
+        const double overflow_ratio = objFunc.overflow_ratio();
+        printf("32 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
+                d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
+        if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
+            break;
         }
         prev_overflow_ratio = overflow_ratio;
     }
