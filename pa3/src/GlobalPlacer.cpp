@@ -105,7 +105,7 @@ void GlobalPlacer::place() {
     double prev_overflow_ratio = objFunc.overflow_ratio();
     printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
            objFunc.lambda(), prev_overflow_ratio);
-    while (d_iter < 300) {
+    while (d_iter < 100) {
         ++d_iter;
         optimizer.Step();
         revert_illegal(positions, _placement, bin_width);
@@ -114,7 +114,7 @@ void GlobalPlacer::place() {
         printf("8 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
                 d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
         if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
-            break;
+            objFunc.scale_lambda(2);
         }
         prev_overflow_ratio = overflow_ratio;
     }
@@ -127,7 +127,7 @@ void GlobalPlacer::place() {
     bin_width = objFunc.bin_width();
     printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
            objFunc.lambda(), prev_overflow_ratio);
-    while (d_iter < 300) {
+    while (d_iter < 100) {
         ++d_iter;
         optimizer.Step();
         revert_illegal(positions, _placement, bin_width);
@@ -136,7 +136,7 @@ void GlobalPlacer::place() {
         printf("16 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
                 d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
         if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
-            break;
+            objFunc.scale_lambda(2);
         }
         prev_overflow_ratio = overflow_ratio;
     }
@@ -149,7 +149,7 @@ void GlobalPlacer::place() {
     bin_width = objFunc.bin_width();
     printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
            objFunc.lambda(), prev_overflow_ratio);
-    while (d_iter < 300) {
+    while (d_iter < 100) {
         ++d_iter;
         optimizer.Step();
         revert_illegal(positions, _placement, bin_width);
@@ -158,7 +158,7 @@ void GlobalPlacer::place() {
         printf("32 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
                 d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
         if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
-            break;
+            objFunc.scale_lambda(2);
         }
         prev_overflow_ratio = overflow_ratio;
     }

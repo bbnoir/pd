@@ -18,7 +18,8 @@ TEST_DIR=benchmark
 LOG_DIR=log
 
 define TEST
-	./bin/$(EXECUTABLE) -aux $(TEST_DIR)/$1.aux | tee $(LOG_DIR)/$1.log
+	./bin/$(EXECUTABLE) -aux $(TEST_DIR)/$1.aux
+	python3 plot.py init.plt_boundary.dat init.plt_modules.dat init.plt_info.dat
 endef
 
 t1: all
