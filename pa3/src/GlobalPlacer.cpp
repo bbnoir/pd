@@ -89,8 +89,6 @@ void GlobalPlacer::place() {
         optimizer.Step();
         revert_illegal(positions, _placement);
         double wl = objFunc(positions);
-        printf("wl_iter %3d: wl = %10.2e, best_wl = %10.2e\n",
-               wl_iter, wl, best_wl);
         if (wl < best_wl) {
             best_wl = wl;
             wl_stop_cnt = 0;
@@ -99,69 +97,25 @@ void GlobalPlacer::place() {
         }
     }
 
-    int d_iter = 0;
-    objFunc.set_init_lambda();
-    objFunc(positions);
-    double prev_overflow_ratio = objFunc.overflow_ratio();
-    printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
-           objFunc.lambda(), prev_overflow_ratio);
-    while (d_iter < stage_limit) {
-        ++d_iter;
-        optimizer.Step();
-        revert_illegal(positions, _placement);
-        const double f = objFunc(positions);
-        const double overflow_ratio = objFunc.overflow_ratio();
-        printf("8 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
-                d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
-        if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
-            objFunc.scale_lambda(1.5);
+    vector<int> bin_size_list = {8, 16, 32};
+    for (int i = 0; i < 3; ++i) {
+        // optimize density
+        objFunc.resize_bin(bin_size_list[i]);
+        objFunc.set_init_lambda();
+        objFunc(positions);
+        double prev_overflow_ratio = objFunc.overflow_ratio();
+        int d_iter = 0;
+        while (d_iter < stage_limit) {
+            ++d_iter;
+            optimizer.Step();
+            revert_illegal(positions, _placement);
+            const double overflow_ratio = objFunc.overflow_ratio();
+            if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
+                objFunc.scale_lambda(1.5);
+            }
+            if (overflow_ratio < 0.1) { break; }
+            prev_overflow_ratio = overflow_ratio;
         }
-        if (overflow_ratio < 0.1) { break; }
-        prev_overflow_ratio = overflow_ratio;
-    }
-
-    d_iter = 0;
-    objFunc.resize_bin(16);
-    objFunc.set_init_lambda();
-    objFunc(positions);
-    prev_overflow_ratio = objFunc.overflow_ratio();
-    printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
-           objFunc.lambda(), prev_overflow_ratio);
-    while (d_iter < stage_limit) {
-        ++d_iter;
-        optimizer.Step();
-        revert_illegal(positions, _placement);
-        const double f = objFunc(positions);
-        const double overflow_ratio = objFunc.overflow_ratio();
-        printf("16 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
-                d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
-        if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
-            objFunc.scale_lambda(1.5);
-        }
-        if (overflow_ratio < 0.1) { break; }
-        prev_overflow_ratio = overflow_ratio;
-    }
-
-    d_iter = 0;
-    objFunc.resize_bin(32);
-    objFunc.set_init_lambda();
-    objFunc(positions);
-    prev_overflow_ratio = objFunc.overflow_ratio();
-    printf("INFO: Initial lambda = %10.2e, overflow_ratio = %4.2f\n",
-           objFunc.lambda(), prev_overflow_ratio);
-    while (d_iter < 100) {
-        ++d_iter;
-        optimizer.Step();
-        revert_illegal(positions, _placement);
-        const double f = objFunc(positions);
-        const double overflow_ratio = objFunc.overflow_ratio();
-        printf("32 - d_iter %3d: f = %10.2e, wl = %10.2e, d = %10.2e, lambda = %10.2e, overflow_ratio = %4.2f\n",
-                d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
-        if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
-            objFunc.scale_lambda(1.5);
-        }
-        if (overflow_ratio < 0.1) { break; }
-        prev_overflow_ratio = overflow_ratio;
     }
 
     ////////////////////////////////////////////////////////////////////
