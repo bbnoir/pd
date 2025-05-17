@@ -10,7 +10,7 @@ WAWirelength::WAWirelength(Placement &placement, std::vector<Point2<double>> &in
     : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     gamma_ = max(placement_.boundryRight() - placement_.boundryLeft(),
-                  placement_.boundryTop() - placement_.boundryBottom()) * 0.05;
+                  placement_.boundryTop() - placement_.boundryBottom()) * 0.5;
     const size_t num_nets = placement_.numNets();
     x_max_.resize(num_nets);
     y_max_.resize(num_nets);
@@ -136,11 +136,14 @@ Density::Density(Placement &placement, std::vector<Point2<double>> &input)
     : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     // initialize bins
-    num_bins_x_ = num_bins_y_ = sqrt(placement_.numModules()) / 2;
-    bin_width_ = (placement_.boundryRight() - placement_.boundryLeft()) / num_bins_x_;
-    bin_height_ = (placement_.boundryTop() - placement_.boundryBottom()) / num_bins_y_;
+    const int module_sqrt = sqrt(placement_.numModules());
+    const int grid_num = module_sqrt / 2;
+    bin_width_ = bin_height_ = min(placement_.boundryRight() - placement_.boundryLeft(),
+                            placement_.boundryTop() - placement_.boundryBottom()) / grid_num;
+    num_bins_x_ = (placement_.boundryRight() - placement_.boundryLeft()) / bin_width_;
+    num_bins_y_ = (placement_.boundryTop() - placement_.boundryBottom()) / bin_height_;
     bin_area_ = bin_width_ * bin_height_;
-    bin_range_ = 3;
+    bin_range_ = 2;
     t_density_ = 0.9;
     Mb_.resize(num_bins_y_, vector<double>(num_bins_x_, t_density_));
     Db_.resize(num_bins_y_, vector<double>(num_bins_x_, 0.));
@@ -197,10 +200,8 @@ static inline double d_bell_shaped(double dx, double wv, double wb, double a, do
     const double abs_dx = abs(dx);
     double dpx = 0;
     if (abs_dx <= wv * 0.5 + wb) {
-        // dpx = (dx > 0) ? -2. * a * dx : 2. * a * dx;
         dpx = -2. * a * dx;
     } else if ((wv * 0.5 + wb) < abs_dx && abs_dx <= (wv * 0.5 + 2. * wb)) {
-        // dpx = (dx > 0) ? 2. * b * (dx - wv * 0.5 - wb * 2.) : -2. * b * (dx - wv * 0.5 - wb * 2.);
         dpx = (dx > 0) ? 2. * b * (dx - wv * 0.5 - wb * 2.) : 2. * b * (dx + wv * 0.5 + wb * 2.);
     }
     return dpx;
@@ -314,29 +315,38 @@ const std::vector<Point2<double>> &Density::Backward()
 }
 
 ObjectiveFunction::ObjectiveFunction(Placement &placement, std::vector<Point2<double>> &input)
-    : BaseFunction(placement.numModules()), wirelength_(placement, input), density_(placement, input)
+    : BaseFunction(placement.numModules()), wirelength_(placement, input), density_(placement, input), input_(input)
 {
     lambda_ = 0;
 }
 
 const double &ObjectiveFunction::operator()(const std::vector<Point2<double>> &input)
 {
-    value_ = wirelength_(input) + lambda_ * density_(input);
+    value_ = wirelength_(input);
+    if (lambda_ != 0) { value_ += lambda_ * density_(input); }
     return value_;
 }
 
 const std::vector<Point2<double>> &ObjectiveFunction::Backward()
 {
     wirelength_.Backward();
-    density_.Backward();
+    if (lambda_ != 0) { density_.Backward(); }
     for (size_t i = 0, end_i = grad_.size(); i < end_i; ++i) {
-        grad_[i] = wirelength_.grad()[i] + lambda_ * density_.grad()[i];
+        grad_[i] = wirelength_.grad()[i];
+    }
+    if (lambda_ != 0) {
+        for (size_t i = 0, end_i = grad_.size(); i < end_i; ++i) {
+            grad_[i] += lambda_ * density_.grad()[i];
+        }
     }
     return grad_;
 }
 
 void ObjectiveFunction::set_init_lambda()
 {
+    value_ = wirelength_(input_) + lambda_ * density_(input_);
+    wirelength_.Backward();
+    density_.Backward();
     double sum_wl_grad = 0., sum_d_grad = 0.;
     for (auto &grad : wirelength_.grad()) { sum_wl_grad += Norm2(grad); }
     for (auto &grad : density_.grad()) { sum_d_grad += Norm2(grad); }

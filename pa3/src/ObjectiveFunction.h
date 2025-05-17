@@ -129,6 +129,7 @@ class ObjectiveFunction : public BaseFunction {
    private:
     WAWirelength wirelength_;
     Density density_;
+    std::vector<Point2<double>> &input_;
     double lambda_;
 };
 

@@ -38,16 +38,17 @@ void GlobalPlacer::place() {
         }
     }
 
-    const double kAlpha = 0.3;
+    const double kAlpha = 0.5;
     ObjectiveFunction objFunc(_placement, positions);
     SimpleConjugateGradient optimizer(objFunc, positions, kAlpha);
     optimizer.Initialize();
     double prev_overflow_ratio = 1;
+    int overflow_stop_cnt = 0;
     for (size_t i = 0, end_i = 1000; i < end_i; ++i) {
-        if (i == 30) { objFunc.set_init_lambda(); }
+        if (i == 100) { objFunc.set_init_lambda(); }
         double f = objFunc(positions), wl = objFunc.wl_value(), d = objFunc.d_value(), overflow_ratio = objFunc.overflow_ratio();
-        printf("iter %6ld: f = %10.2e, lambda = %10.2e, wl = %10.2e (%3.1f%%), d = %10.2e (%3.1f%%), overflow_ratio = %3.2f\n",
-               i, f, objFunc.lambda(), wl, wl / f * 100, d, d * objFunc.lambda() / f * 100, overflow_ratio);
+        printf("iter %6ld: f = %10.2e, alpha = %10.2e, lambda = %10.2e, wl = %10.2e (%3.1f%%), d = %10.2e (%3.1f%%), overflow_ratio = %3.2f\n",
+               i, f, optimizer.alpha(), objFunc.lambda(), wl, wl / f * 100, d, d * objFunc.lambda() / f * 100, overflow_ratio);
         optimizer.Step();
         for (size_t j = 0, end_j = num_modules; j < end_j; ++j) {
             Module &module = _placement.module(j);
@@ -57,19 +58,28 @@ void GlobalPlacer::place() {
                 positions[j].y = module.y();
             } else {
                 // check if the module is out of the bounding box
+                const double half_bin_width = objFunc.bin_width() * 0.5;
                 if (positions[j].x < _placement.boundryLeft()) {
-                    positions[j].x = _placement.boundryLeft();
+                    positions[j].x = _placement.boundryLeft() + half_bin_width;
                 } else if (positions[j].x + module.width() > _placement.boundryRight()) {
-                    positions[j].x = _placement.boundryRight() - module.width();
+                    positions[j].x = _placement.boundryRight() - module.width() - half_bin_width;
                 }
                 if (positions[j].y < _placement.boundryBottom()) {
-                    positions[j].y = _placement.boundryBottom();
+                    positions[j].y = _placement.boundryBottom() + half_bin_width;
                 } else if (positions[j].y + module.height() > _placement.boundryTop()) {
-                    positions[j].y = _placement.boundryTop() - module.height();
+                    positions[j].y = _placement.boundryTop() - module.height() - half_bin_width;
                 }
             }
         }
-        if (i > 30 && prev_overflow_ratio < overflow_ratio) {
+        if (prev_overflow_ratio - overflow_ratio < 0.01) {
+            ++overflow_stop_cnt;
+        } else {
+            overflow_stop_cnt = 0;
+        }
+        if (d * objFunc.lambda() / f > 0.8) {
+            objFunc.scale_lambda(0.1);
+        }
+        if (i > 30 && overflow_stop_cnt > 1) {
             objFunc.scale_lambda(2);
         }
         prev_overflow_ratio = overflow_ratio;

@@ -59,6 +59,9 @@ class SimpleConjugateGradient : public BaseOptimizer {
     // Perform one optimization step
     void Step() override;
 
+    void scale_alpha(double scale) { alpha_ *= scale; }
+    double alpha() const { return alpha_; }
+
    private:
     /////////////////////////////////
     // Data members
