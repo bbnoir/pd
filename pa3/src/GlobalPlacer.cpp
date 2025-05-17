@@ -115,6 +115,7 @@ void GlobalPlacer::place() {
                 d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
         if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
             objFunc.scale_lambda(2);
+            if (overflow_ratio < 0.1) { break; }
         }
         prev_overflow_ratio = overflow_ratio;
     }
@@ -137,6 +138,7 @@ void GlobalPlacer::place() {
                 d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
         if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
             objFunc.scale_lambda(2);
+            if (overflow_ratio < 0.1) { break; }
         }
         prev_overflow_ratio = overflow_ratio;
     }
@@ -159,6 +161,7 @@ void GlobalPlacer::place() {
                 d_iter, f, objFunc.wl_value(), objFunc.d_value(), objFunc.lambda(), overflow_ratio);
         if (d_iter > 10 && overflow_ratio >= prev_overflow_ratio) {
             objFunc.scale_lambda(2);
+            if (overflow_ratio < 0.1) { break; }
         }
         prev_overflow_ratio = overflow_ratio;
     }
