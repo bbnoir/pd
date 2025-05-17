@@ -8,6 +8,8 @@
 #include "Optimizer.h"
 #include "Point.h"
 
+using namespace std;
+
 GlobalPlacer::GlobalPlacer(Placement &placement)
     : _placement(placement) {
 }
@@ -102,42 +104,48 @@ void GlobalPlacer::place() {
 }
 
 void GlobalPlacer::plotPlacementResult(const string outfilename, bool isPrompt) {
-    ofstream outfile(outfilename.c_str(), ios::out);
-    outfile << " " << endl;
-    outfile << "set title \"wirelength = " << _placement.computeHpwl() << "\"" << endl;
-    outfile << "set size ratio 1" << endl;
-    outfile << "set nokey" << endl
-            << endl;
-    outfile << "plot[:][:] '-' w l lt 3 lw 2, '-' w l lt 1" << endl
-            << endl;
-    outfile << "# bounding box" << endl;
-    plotBoxPLT(outfile, _placement.boundryLeft(), _placement.boundryBottom(), _placement.boundryRight(), _placement.boundryTop());
-    outfile << "EOF" << endl;
-    outfile << "# modules" << endl
-            << "0.00, 0.00" << endl
-            << endl;
+    // Generate data files for matplotlib
+    string boundaryFileName = outfilename + "_boundary.dat";
+    string moduleFileName = outfilename + "_modules.dat";
+    string infoFileName = outfilename + "_info.dat";
+    
+    // Write boundary data
+    ofstream boundaryFile(boundaryFileName.c_str(), ios::out);
+    plotBoxDAT(boundaryFile, _placement.boundryLeft(), _placement.boundryBottom(), 
+               _placement.boundryRight(), _placement.boundryTop());
+    boundaryFile.close();
+    
+    // Write module data
+    ofstream moduleFile(moduleFileName.c_str(), ios::out);
     for (size_t i = 0; i < _placement.numModules(); ++i) {
         Module &module = _placement.module(i);
-        plotBoxPLT(outfile, module.x(), module.y(), module.x() + module.width(), module.y() + module.height());
+        plotBoxDAT(moduleFile, module.x(), module.y(), 
+                  module.x() + module.width(), module.y() + module.height());
+        // Add blank line between modules for matplotlib to recognize separate polygons
+        moduleFile << endl;
     }
-    outfile << "EOF" << endl;
-    outfile << "pause -1 'Press any key to close.'" << endl;
-    outfile.close();
-
+    moduleFile.close();
+    
+    // Write placement info
+    ofstream infoFile(infoFileName.c_str(), ios::out);
+    infoFile << _placement.computeHpwl() << endl;
+    infoFile.close();
+    
     if (isPrompt) {
         char cmd[200];
-        sprintf(cmd, "gnuplot %s", outfilename.c_str());
-        if (!system(cmd)) {
+        sprintf(cmd, "python plot.py %s %s %s", 
+                boundaryFileName.c_str(), moduleFileName.c_str(), infoFileName.c_str());
+        if (system(cmd) != 0) {
             cout << "Fail to execute: \"" << cmd << "\"." << endl;
         }
     }
 }
 
-void GlobalPlacer::plotBoxPLT(ofstream &stream, double x1, double y1, double x2, double y2) {
-    stream << x1 << ", " << y1 << endl
-           << x2 << ", " << y1 << endl
-           << x2 << ", " << y2 << endl
-           << x1 << ", " << y2 << endl
-           << x1 << ", " << y1 << endl
-           << endl;
+// Helper function for writing box coordinates to data files
+void GlobalPlacer::plotBoxDAT(ofstream &stream, double x1, double y1, double x2, double y2) {
+    stream << x1 << " " << y1 << endl
+           << x2 << " " << y1 << endl
+           << x2 << " " << y2 << endl
+           << x1 << " " << y2 << endl
+           << x1 << " " << y1 << endl;
 }

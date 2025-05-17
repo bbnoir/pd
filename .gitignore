@@ -44,3 +44,5 @@ pa3/src/GlobalPlacer.cpp
 plots
 *.pl
 *.plt
+pa3/*.dat
+pa3/*.png
