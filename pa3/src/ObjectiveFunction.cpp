@@ -10,7 +10,7 @@ WAWirelength::WAWirelength(Placement &placement, std::vector<Point2<double>> &in
     : BaseFunction(placement.numModules()), placement_(placement), input_(input)
 {
     gamma_ = max(placement_.boundryRight() - placement_.boundryLeft(),
-                  placement_.boundryTop() - placement_.boundryBottom()) / 10.;
+                  placement_.boundryTop() - placement_.boundryBottom()) * 0.1;
     const size_t num_nets = placement_.numNets();
     x_max_.resize(num_nets);
     y_max_.resize(num_nets);

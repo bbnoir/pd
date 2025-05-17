@@ -58,8 +58,8 @@ void GlobalPlacer::place() {
     const double outline_height = _placement.boundryTop() - _placement.boundryBottom();
     const double mid_x = _placement.boundryLeft() + outline_width / 2;
     const double mid_y = _placement.boundryBottom() + outline_height / 2;
-    const double random_width = outline_width * 0.1;
-    const double random_height = outline_height * 0.1;
+    const double random_width = outline_width * 0.005;
+    const double random_height = outline_height * 0.005;
     srand(42);
     for (size_t i = 0, end_i = num_modules; i < end_i; ++i) {
         Module &module = _placement.module(i);
@@ -77,7 +77,7 @@ void GlobalPlacer::place() {
     SimpleConjugateGradient optimizer(objFunc, positions, kAlpha);
     optimizer.Initialize();
 
-    const int stage_limit = 300;
+    const int stage_limit = 100;
 
     // optimize wirelength
     int wl_iter = 0;
